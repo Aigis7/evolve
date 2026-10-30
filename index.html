@@ -252,18 +252,81 @@ details.panel > summary{cursor:pointer}
   .mrow .actions{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:5px}
   .mrow .actions button{padding:9px 4px;font-size:12px;min-height:40px}
 }
+
+/* ---------- タイトル画面 ---------- */
+.title{position:fixed;inset:0;z-index:50;overflow:auto;color:#eef3f6;
+  background:
+    radial-gradient(120% 70% at 50% -10%, rgba(224,179,65,.28), transparent 60%),
+    radial-gradient(90% 60% at 100% 110%, rgba(90,166,200,.22), transparent 60%),
+    linear-gradient(180deg,#0e1820,#152330 60%,#0e1820);
+  padding:max(28px,env(safe-area-inset-top,0px)) max(16px,env(safe-area-inset-right,0px)) max(24px,env(safe-area-inset-bottom,0px)) max(16px,env(safe-area-inset-left,0px));
+  display:flex;flex-direction:column;align-items:center;justify-content:center;gap:18px}
+.title::before{content:"";position:fixed;inset:0;pointer-events:none;opacity:.07;
+  background-image:repeating-linear-gradient(115deg,#fff 0 1px,transparent 1px 46px),repeating-linear-gradient(25deg,#fff 0 1px,transparent 1px 46px)}
+.tcard{position:relative;width:100%;max-width:440px;display:flex;flex-direction:column;gap:18px;animation:tIn .5s ease-out both}
+@keyframes tIn{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
+@media (prefers-reduced-motion:reduce){.tcard{animation:none}}
+.tkicker{font-family:var(--f-num);font-size:11px;letter-spacing:.24em;color:#e0b341;text-align:center}
+.tlogo{font-family:var(--f-display);font-weight:400;font-size:clamp(46px,15vw,72px);line-height:1;margin:0;text-align:center;letter-spacing:.02em;
+  background:linear-gradient(180deg,#fff6d8 10%,#e0b341 55%,#a8761a);-webkit-background-clip:text;background-clip:text;color:transparent;
+  filter:drop-shadow(0 3px 0 rgba(0,0,0,.35))}
+.tlogo span{font-size:.62em;margin-left:.06em}
+.tsub{margin:-6px 0 0;text-align:center;font-size:13px;color:#a9bcc7;letter-spacing:.08em}
+.tdeck{display:flex;align-items:center;gap:10px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.12);border-radius:12px;padding:10px 12px}
+.tdeck span{font-size:12px;color:#a9bcc7;white-space:nowrap;letter-spacing:.08em}
+.tdeck select{flex:1;min-width:0;font:inherit;font-weight:700;color:#eef3f6;background:rgba(0,0,0,.25);border:1px solid rgba(255,255,255,.18);border-radius:8px;padding:8px 10px}
+.tdeck select option{color:#1b2a33}
+.tmenu{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.tbtn{display:flex;flex-direction:column;align-items:flex-start;gap:6px;text-align:left;min-height:104px;padding:14px;border-radius:14px;
+  color:#eef3f6;background:linear-gradient(160deg,rgba(255,255,255,.10),rgba(255,255,255,.03));border:1px solid rgba(255,255,255,.14);
+  box-shadow:0 1px 0 rgba(255,255,255,.08) inset,0 8px 20px rgba(0,0,0,.25);transition:transform .12s,border-color .12s}
+.tbtn:hover{border-color:rgba(224,179,65,.7)}
+.tbtn:active{transform:scale(.98)}
+.tbtn svg{width:26px;height:26px;stroke:#e0b341;fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.tbtn b{font-size:16px;letter-spacing:.04em}
+.tbtn small{font-size:11.5px;color:#a9bcc7;line-height:1.4}
+.tbtn.main{grid-column:1/-1;flex-direction:row;align-items:center;gap:14px;min-height:76px;
+  background:linear-gradient(160deg,#e9bf4f,#b8860b);color:#1b1505;border-color:#f3d27a}
+.tbtn.main svg{stroke:#1b1505;width:30px;height:30px}
+.tbtn.main small{color:#3d2c05}
+.tbtn.main .tt{display:flex;flex-direction:column;gap:2px}
+.tsubrow{grid-column:1/-1;display:flex;gap:8px;align-items:center;background:rgba(0,0,0,.25);border:1px solid rgba(224,179,65,.4);border-radius:12px;padding:10px}
+.tsubrow select{flex:1;min-width:0;font:inherit;color:#eef3f6;background:rgba(0,0,0,.3);border:1px solid rgba(255,255,255,.18);border-radius:8px;padding:8px}
+.tsubrow select option{color:#1b2a33}
+.tsubrow button{background:#e0b341;color:#1b1505;border-color:#e0b341;font-weight:700;padding:8px 14px;border-radius:8px}
+.tfeed{margin:0;text-align:center;font-size:12px;color:#a9bcc7;min-height:1.4em}
+.tlegal{position:relative;margin:0;max-width:440px;text-align:center;font-size:10.5px;color:#6f8593;line-height:1.5}
+body.at-title{overflow:hidden}
 </style>
 <script src="peerjs.min.js"></script>
 </head>
 <body>
 
 
+<div id="titleView" class="title" hidden>
+  <div class="tcard">
+    <div class="tkicker">SHADOWVERSE EVOLVE ／ FAN TOOL</div>
+    <h1 class="tlogo">エボルヴ<span>卓</span></h1>
+    <p class="tsub">ひとり回し・CPU戦・オンライン対戦</p>
+    <label class="tdeck"><span>使うデッキ</span><select id="tDeck"></select></label>
+    <div class="tmenu">
+      <button type="button" class="tbtn main" data-go="online"><svg viewBox="0 0 24 24"><circle cx="8" cy="9" r="3"/><circle cx="16" cy="9" r="3"/><path d="M3 19c.8-3 2.8-4.5 5-4.5s4.2 1.5 5 4.5M11 19c.8-3 2.8-4.5 5-4.5s4.2 1.5 5 4.5"/></svg><span class="tt"><b>友達と対戦</b><small>合言葉でつないでオンライン対戦</small></span></button>
+      <button type="button" class="tbtn" data-go="cpu"><svg viewBox="0 0 24 24"><rect x="5" y="7" width="14" height="11" rx="3"/><path d="M12 7V4M9 12h.01M15 12h.01M9.5 15h5M3 12v2M21 12v2"/></svg><b>CPUと対戦</b><small>結果から動きを学ぶCPU</small></button>
+      <button type="button" class="tbtn" data-go="solo"><svg viewBox="0 0 24 24"><rect x="5" y="3" width="11" height="15" rx="2"/><path d="M9 21h9a2 2 0 0 0 2-2V7"/></svg><b>ひとりで回す</b><small>相手なしで動きを試す</small></button>
+      <div class="tsubrow" id="tCpuRow" hidden><select id="tOpp" aria-label="CPUのデッキ"></select><button type="button" id="tCpuGo">対戦開始</button></div>
+      <button type="button" class="tbtn" data-go="deck" style="grid-column:1/-1;min-height:0;flex-direction:row;align-items:center;gap:12px"><svg viewBox="0 0 24 24"><rect x="4" y="5" width="10" height="14" rx="2"/><path d="M17 8l3 1-3 10-3-1M9 9v6M6 12h6"/></svg><b>デッキを組む</b><small>カードプールとデッキ編集</small></button>
+    </div>
+    <p class="tfeed" id="tFeed"></p>
+  </div>
+  <p class="tlegal">非公式のファンツール（営利目的なし・身内用）。公式とは関係ありません。<br>Shadowverse EVOLVE：© Cygames, Inc. ©Bushiroad</p>
+</div>
 <div class="wrap">
   <header class="top">
     <h1>エボルヴ一人回し卓</h1>
     <div class="toolbar">
       <button id="btnUndo" type="button">元に戻す</button>
       <button id="btnSetup" type="button">デッキ編集・リセット</button>
+      <button id="btnTitle" type="button">タイトル</button>
     </div>
   </header>
 
@@ -2658,9 +2721,35 @@ $('btnNetClose').onclick = netClose;
   if (STANDALONE) loadStarter();
 })();
 /* アプリ版：公開リポジトリの cards.txt と decks.json を読み込む（カードは上書き追加、デッキは一度だけ追加） */
+
+/* ---------- タイトル画面 ---------- */
+var TITLE = {on: true};
+function deckLabel(d){ return `${d.name || '名前なし'}（${d.cls ? d.cls + '・' : ''}${Object.values(d.main).reduce((a, b) => a + b, 0)}枚）`; }
+function renderTitle(){
+  const v = $('titleView'); if (!v) return;
+  v.hidden = !TITLE.on; document.body.classList.toggle('at-title', TITLE.on);
+  if (!TITLE.on) return;
+  $('tDeck').innerHTML = SAVED.map(d => `<option value="${esc(d.id)}" ${d === DK ? 'selected' : ''}>${esc(deckLabel(d))}</option>`).join('');
+  const ov = LS.get('evolveSolo.oppDeck', '');
+  $('tOpp').innerHTML = SAVED.map(d => `<option value="${esc(d.id)}" ${d.id === ov ? 'selected' : ''}>CPU：${esc(deckLabel(d))}</option>`).join('');
+  $('tFeed').textContent = $('feedStatus') ? $('feedStatus').textContent : '';
+}
+function leaveTitle(){ TITLE.on = false; renderTitle(); render(); window.scrollTo(0, 0); }
+function goTitle(){ if (NET.on) return; S = null; history = []; sel = null; closeModal(); TITLE.on = true; render(); renderTitle(); }
+$('tDeck').addEventListener('change', e => { const d = SAVED.find(x => x.id === e.target.value); if (d){ DK = d; pendingDel = null; persist(); } });
+document.querySelectorAll('#titleView [data-go]').forEach(b => b.onclick = () => {
+  const go = b.dataset.go;
+  if (go === 'cpu'){ const r = $('tCpuRow'); r.hidden = !r.hidden; return; }
+  leaveTitle();
+  if (go === 'solo'){ LS.set('evolveSolo.oppDeck', ''); renderSetup(); start(); if (!S) $('startMsg').scrollIntoView({block: 'center'}); }
+  else if (go === 'online'){ LS.set('evolveSolo.oppDeck', ''); renderSetup(); $('netBox').scrollIntoView({block: 'center'}); }
+});
+$('tCpuGo').onclick = () => { LS.set('evolveSolo.oppDeck', $('tOpp').value); leaveTitle(); renderSetup(); start(); if (!S) $('startMsg').scrollIntoView({block: 'center'}); };
+$('btnTitle').onclick = goTitle;
+renderTitle();
 /* アプリ版：カードとデッキは「非公開のGist」から配る。リポジトリにはカードの文章を置かない */
 function feedIdOf(v){ const m = String(v || '').trim().match(/([0-9a-f]{20,40})(?:[^0-9a-f]|$)/i); return m ? m[1] : ''; }
-function feedMsg(t){ const e = $('feedStatus'); if (e) e.textContent = t; }
+function feedMsg(t){ const e = $('feedStatus'); if (e) e.textContent = t; if ($("tFeed") && typeof TITLE !== "undefined" && TITLE && TITLE.on) renderTitle(); }
 async function fetchFeed(id){
   const r = await fetch(`https://api.github.com/gists/${id}`, {cache: 'no-cache', headers: {Accept: 'application/vnd.github+json'}});
   if (!r.ok) throw new Error(r.status === 404 ? '配信コードが見つからない' : `読み込めなかった（${r.status}）`);
