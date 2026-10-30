@@ -461,6 +461,15 @@ header.top h1{font-size:20px}
 #hand .ctext{display:none !important}
 #hand .card{min-height:0}
 @media (max-width:700px){#hand .card{width:88px !important;padding:6px 6px 5px}#hand .row1{flex-direction:column;gap:3px}#hand .cname{font-size:11.5px}}
+/* デッキを組む画面（1列のとき）：配信元 → デッキ → カードプール の順 */
+@media (max-width:900px){
+  #setupView.mode-deck .setcol{display:contents}
+  #setupView.mode-deck #cloudMsg{order:0}
+  #setupView.mode-deck #feedBox{order:1}
+  #setupView.mode-deck .deckpanel{order:2}
+  #setupView.mode-deck #importBox{order:3}
+  #setupView.mode-deck #poolPanel{order:4}
+}
 /* ドラッグ */
 #gameView .card[data-u]{-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
 #field .card,#ex .card{touch-action:none}
@@ -610,7 +619,7 @@ body.drag-attack .dropover{outline-color:var(--danger) !important}
           <p class="fmt">メモなどに保存しておけば、上の欄に貼って「取り込む」を押すだけで全部戻せる。クラスとエボルヴの区別も入ってるから、取り込むときの選択は何でもいい。</p>
         </div>
       </details>
-      <div class="panel">
+      <div class="panel" id="poolPanel">
         <div class="zonehead"><h2>カードプール</h2><span class="n" id="poolN"></span></div>
         <div class="poolbar">
           <input id="poolQ" type="search" placeholder="名前・テキストで検索">
