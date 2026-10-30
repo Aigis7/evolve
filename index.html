@@ -340,14 +340,14 @@ body.at-title{overflow:hidden}
   <!-- SETUP -->
   <section id="setupView" class="setup2">
     <div class="setcol">
-      <p class="fmt" id="cloudMsg" style="margin:0">保存先を確認中…</p>
+      <p class="fmt" id="cloudMsg" style="margin:0" hidden>保存先を確認中…</p>
       <div id="feedBox" class="panel" hidden>
         <h2>カードの配信元</h2>
         <p class="fmt" style="margin:0">管理する人から教わった配信コードを入れると、カードとデッキがその人の最新版にそろう。開くたびに自動で更新される。</p>
         <div class="toolbar"><input id="feedId" type="text" placeholder="配信コード" autocomplete="off" style="flex:1 1 140px;min-width:0;font:inherit;background:var(--mat);color:var(--ink);border:1px solid var(--line);border-radius:6px;padding:5px 8px"><button id="btnFeed" type="button">保存して読み込む</button></div>
         <div id="feedStatus" class="fmt"></div>
       </div>
-      <details class="panel" id="importBox">
+      <details class="panel" id="importBox" hidden>
         <summary><h2 style="display:inline">カードを取り込む</h2></summary>
         <p class="fmt">1行1種類で <code>カード名|コスト|種類|攻撃|体力|テキスト</code>。先頭に枚数が付いていても読める（取り込みでは枚数を無視）。種類は「フォロワー」「スペル」「アミュレット」。テキスト内の改行は <code>\n</code>。同じ名前のカードを取り込むと上書きするから、テキストの直しもここでできる。</p>
         <textarea id="importText" spellcheck="false" placeholder="カード名|2|フォロワー|2|2|【ファンファーレ】カードを1枚引く。"></textarea>
@@ -2726,7 +2726,7 @@ $('btnNetClose').onclick = netClose;
   ensureDecks();
   LIB.forEach(c => { c.text = fixText(c.text); if (c.sample && !c.cls) c.cls = 'ニュートラル'; });
   persist();
-  $('importBox').open = !LIB.length || LIB.every(c => c.sample);
+  $('importBox').open = false;
   render();
   setCloudMsg();
   cloudInit();
