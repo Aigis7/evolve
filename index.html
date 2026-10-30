@@ -1,0 +1,2718 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="robots" content="noindex, nofollow, noarchive">
+<meta name="sve-standalone" content="1">
+<meta name="theme-color" content="#1b2a33">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="エボルヴ卓">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icon-192.png">
+<link rel="apple-touch-icon" href="icon-192.png">
+<title>エボルヴ一人回し卓</title>
+
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Dela+Gothic+One&family=Zen+Kaku+Gothic+New:wght@400;500;700&family=JetBrains+Mono:wght@500;700&display=swap">
+<style>
+[hidden]{display:none !important}
+/* Layout: 上にリーダー状況バー、中央にプレイマット(場・EX)、下に手札。右(狭い画面では下)に山札・墓場などのパイルと選択カード詳細 */
+:root{
+  --mat:#e6ecef; --surface:#f8fafb; --ink:#1b2a33; --muted:#5d6f7a; --line:#c6d2d9;
+  --accent:#b8860b; --accent-ink:#ffffff; --follower:#2f6d8a; --spell:#7a4a8c; --amulet:#3d7a4e; --evo:#b8860b;
+  --danger:#b3412e; --rest:#d5dde2; --chip:#eef2f4;
+  --f-display:"Dela Gothic One","Hiragino Sans","Yu Gothic",sans-serif;
+  --f-body:"Zen Kaku Gothic New","Hiragino Sans","Yu Gothic","Meiryo",sans-serif;
+  --f-num:"JetBrains Mono",ui-monospace,Menlo,Consolas,monospace;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --mat:#121c24; --surface:#1b2832; --ink:#e3ebef; --muted:#93a6b1; --line:#2d3e4a;
+  --accent:#e0b341; --accent-ink:#1b1505; --follower:#5aa6c8; --spell:#b98bd0; --amulet:#6fbf85; --evo:#e0b341;
+  --danger:#e97862; --rest:#26343f; --chip:#22313c; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --mat:#121c24; --surface:#1b2832; --ink:#e3ebef; --muted:#93a6b1; --line:#2d3e4a;
+  --accent:#e0b341; --accent-ink:#1b1505; --follower:#5aa6c8; --spell:#b98bd0; --amulet:#6fbf85; --evo:#e0b341;
+  --danger:#e97862; --rest:#26343f; --chip:#22313c; color-scheme:dark}
+*{box-sizing:border-box}
+body{background:var(--mat);color:var(--ink);font-family:var(--f-body);font-size:14px;line-height:1.55;
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:16px 40px}
+h1{font-family:var(--f-display);font-weight:400;font-size:22px;margin:0;letter-spacing:.02em}
+h2{font-size:12px;font-weight:700;letter-spacing:.12em;color:var(--muted);margin:0}
+button{font:inherit;color:var(--ink);background:var(--surface);border:1px solid var(--line);border-radius:6px;padding:6px 10px;cursor:pointer}
+button:hover{border-color:var(--muted)}
+button:focus-visible,textarea:focus-visible,input:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+button.primary{background:var(--accent);color:var(--accent-ink);border-color:var(--accent);font-weight:700}
+button.danger{color:var(--danger)}
+button:disabled{opacity:.45;cursor:default}
+.wrap{max-width:1240px;margin:0 auto;display:flex;flex-direction:column;gap:14px}
+header.top{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:10px}
+.toolbar{display:flex;flex-wrap:wrap;gap:6px}
+/* stats */
+.stats{display:flex;flex-wrap:wrap;gap:8px}
+.stat{background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:6px 10px;display:flex;align-items:center;gap:8px}
+.stat .lbl{font-size:11px;letter-spacing:.1em;color:var(--muted);font-weight:700}
+.stat .val{font-family:var(--f-num);font-size:20px;font-weight:700;font-variant-numeric:tabular-nums;min-width:2.2ch;text-align:center}
+.stat button{padding:0 7px;line-height:22px;font-family:var(--f-num)}
+.stat.pp .val{color:var(--follower)} .stat.ep .val{color:var(--evo)} .stat.life .val{color:var(--danger)}
+.ppdots{display:flex;gap:3px}
+.ppdots i{width:8px;height:8px;border-radius:50%;border:1px solid var(--follower)}
+.ppdots i.on{background:var(--follower)}
+.turnbar{display:flex;flex-wrap:wrap;align-items:center;gap:8px}
+.turnlbl{font-family:var(--f-display);font-size:16px}
+/* main grid */
+.table{display:grid;grid-template-columns:minmax(0,1fr) 300px;gap:14px;align-items:start}
+@media (max-width:900px){.table{grid-template-columns:minmax(0,1fr)}}
+.zone{display:flex;flex-direction:column;gap:8px;min-width:0}
+.zonehead{display:flex;justify-content:space-between;align-items:baseline;gap:8px}
+.zonehead .n{font-family:var(--f-num);color:var(--muted);font-size:12px}
+.slots{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:8px}
+.slot{min-height:138px;border:1.5px dashed var(--line);border-radius:10px;display:flex}
+.slot.empty{align-items:center;justify-content:center;color:var(--muted);font-size:11px}
+.slots.ex .slot{min-height:110px}
+.handrow{display:flex;gap:8px;overflow-x:auto;padding-bottom:6px;min-height:150px}
+.handrow .card{width:128px;flex:0 0 auto}
+/* card */
+.card{width:100%;background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:7px 8px 6px;display:flex;flex-direction:column;gap:4px;
+  text-align:left;cursor:pointer;position:relative;border-top:4px solid var(--follower);transition:transform .15s}
+.card.t-spell{border-top-color:var(--spell)} .card.t-amulet{border-top-color:var(--amulet)} .card.t-evo{border-top-color:var(--evo)}
+.card.sel{outline:2px solid var(--accent);outline-offset:1px}
+.card.rested{background:var(--rest)}
+.card.rested .cname::after{content:"レスト";margin-left:4px;font-size:10px;color:var(--muted);font-weight:700}
+.card .row1{display:flex;gap:6px;align-items:flex-start}
+.cost{font-family:var(--f-num);font-weight:700;font-size:13px;min-width:22px;height:22px;border-radius:50%;display:grid;place-items:center;
+  background:var(--follower);color:var(--surface);flex:0 0 auto}
+.t-spell .cost{background:var(--spell)} .t-amulet .cost{background:var(--amulet)} .t-evo .cost{background:var(--evo)}
+.cname{font-weight:700;font-size:12.5px;line-height:1.3;word-break:break-all}
+.ctext{font-size:10.5px;color:var(--muted);line-height:1.4;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden;white-space:pre-line}
+.cfoot{margin-top:auto;display:flex;justify-content:space-between;align-items:center;font-family:var(--f-num);font-weight:700;font-size:13px}
+.cfoot > span:nth-child(2){display:flex;flex-wrap:wrap;gap:2px;justify-content:center;min-width:0}
+.cfoot .atk{color:var(--follower)} .cfoot .def{color:var(--danger)}
+.mod{color:var(--accent)}
+.badge{font-size:10px;font-weight:700;padding:0 5px;border-radius:4px;background:var(--chip);color:var(--muted);font-family:var(--f-body)}
+.badge.evo{background:var(--evo);color:var(--accent-ink)}
+/* side */
+.side{display:flex;flex-direction:column;gap:12px}
+.panel{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:12px;display:flex;flex-direction:column;gap:10px}
+.piles{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+.pile{border:1px solid var(--line);border-radius:8px;padding:8px;display:flex;flex-direction:column;gap:6px;background:var(--mat)}
+.pile .top{display:flex;justify-content:space-between;align-items:baseline}
+.pile .cnt{font-family:var(--f-num);font-size:22px;font-weight:700}
+.pile .btns{display:flex;flex-wrap:wrap;gap:4px}
+.gbreak{display:flex;flex-wrap:wrap;gap:2px 10px;font-size:11.5px;color:var(--muted);line-height:1.5}
+.gbreak b{font-family:var(--f-num);font-size:13px;color:var(--ink)}
+.pile .btns button{padding:3px 7px;font-size:12px}
+.detail .dname{font-family:var(--f-display);font-size:17px;line-height:1.35}
+.detail .dmeta{display:flex;flex-wrap:wrap;gap:6px;align-items:center;font-size:12px;color:var(--muted)}
+.detail .dtext{white-space:pre-line;font-size:13px;line-height:1.6;color:var(--ink);background:var(--mat);border-radius:6px;padding:8px 10px}
+.actions{display:flex;flex-wrap:wrap;gap:5px}
+.actions button{font-size:12px;padding:4px 8px}
+.adj{display:flex;flex-wrap:wrap;gap:6px;align-items:center;font-size:12px}
+.adj span{font-family:var(--f-num)}
+.log{max-height:200px;overflow:auto;font-size:12px;display:flex;flex-direction:column-reverse;gap:2px}
+.log div{border-bottom:1px solid var(--line);padding:2px 0}
+.log .t{font-family:var(--f-num);color:var(--muted);margin-right:6px}
+/* setup */
+.setup{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:14px}
+@media (max-width:760px){.setup{grid-template-columns:minmax(0,1fr)}}
+textarea{width:100%;min-height:260px;font-family:var(--f-num);font-size:12px;line-height:1.5;background:var(--mat);color:var(--ink);border:1px solid var(--line);border-radius:8px;padding:10px;resize:vertical}
+#evoText{min-height:140px}
+.fmt{font-size:12px;color:var(--muted);max-width:68ch}
+.fmt code{font-family:var(--f-num);background:var(--chip);padding:1px 4px;border-radius:4px;color:var(--ink)}
+.opts{display:flex;flex-wrap:wrap;gap:14px;align-items:center;font-size:13px}
+.opts input[type=number]{width:56px;font:inherit;background:var(--mat);color:var(--ink);border:1px solid var(--line);border-radius:6px;padding:3px 6px}
+.warn{font-size:12px;color:var(--danger);display:flex;flex-direction:column;gap:2px}
+.ok{font-size:12px;color:var(--amulet)}
+.banner{background:var(--surface);border:1px solid var(--accent);border-radius:10px;padding:10px 14px;display:flex;flex-wrap:wrap;gap:10px;align-items:center;justify-content:space-between}
+/* modal */
+.overlay{position:fixed;inset:0;background:rgba(10,18,24,.55);display:flex;align-items:center;justify-content:center;z-index:20;
+  padding:max(16px,env(safe-area-inset-top,0px)) max(16px,env(safe-area-inset-right,0px)) max(16px,env(safe-area-inset-bottom,0px)) max(16px,env(safe-area-inset-left,0px))}
+.modal{background:var(--surface);border:1px solid var(--line);border-radius:12px;width:min(760px,100%);max-height:100%;display:flex;flex-direction:column}
+.modal header{display:flex;justify-content:space-between;align-items:center;padding:12px 14px;border-bottom:1px solid var(--line);gap:8px}
+.modal .body{overflow:auto;padding:12px 14px;display:flex;flex-direction:column;gap:6px}
+.mrow{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:8px;align-items:center;border-bottom:1px solid var(--line);padding:6px 0}
+.mrow .nm{font-weight:700;font-size:13px}
+.mrow .tx{font-size:11.5px;color:var(--muted);white-space:pre-line}
+.mrow .actions button{font-size:11.5px;padding:3px 7px}
+.mrow.dim{opacity:.5}
+.card.t-opp{border-top-color:var(--danger)}
+.slots.opp .slot{min-height:96px}
+.oppform{display:flex;flex-wrap:wrap;gap:8px 12px;align-items:center;font-size:13px;padding-bottom:8px;border-bottom:1px solid var(--line)}
+.oppform input[type=text]{font:inherit;background:var(--mat);color:var(--ink);border:1px solid var(--line);border-radius:6px;padding:5px 8px;width:11em;max-width:100%}
+.oppform input[type=number]{font:inherit;background:var(--mat);color:var(--ink);border:1px solid var(--line);border-radius:6px;padding:5px 6px;width:4.5em}
+.linkbtn{padding:2px 8px;font-size:11.5px}
+@media (max-width:560px){.mrow{grid-template-columns:minmax(0,1fr)}}
+@media (prefers-reduced-motion:reduce){.card{transition:none}}
+button{touch-action:manipulation}
+.mobile-only{display:none}
+.optsbox summary{cursor:pointer;font-size:13px;color:var(--muted);padding:4px 0}
+.optsin{display:flex;flex-wrap:wrap;gap:8px 14px;align-items:center;font-size:13px;padding:6px 0}
+.optsin .maxpp{display:inline-flex;gap:4px;align-items:center}
+.detail .dhead{display:flex;justify-content:space-between;align-items:center;gap:8px}
+.closesel{display:none}
+.dockbtns{gap:6px}
+/* カードプールとデッキ作成 */
+.setup2{display:grid;grid-template-columns:minmax(0,1fr) 340px;gap:14px;align-items:start}
+@media (max-width:900px){.setup2{grid-template-columns:minmax(0,1fr)}}
+.setcol{display:flex;flex-direction:column;gap:14px;min-width:0}
+.deckpanel{position:sticky;top:12px}
+details.panel > summary{cursor:pointer}
+#importText{min-height:150px}
+.poolbar{display:flex;flex-wrap:wrap;gap:8px}
+.poolbar label{display:flex;align-items:center;gap:4px;font-size:13px}
+.clsSel{font:inherit;font-size:12px;background:var(--mat);color:var(--ink);border:1px solid var(--line);border-radius:6px;padding:2px 4px}
+#deckSel{width:100%;font-size:15px;font-weight:700}
+#deckName{flex:1 1 140px}
+#oppDeckSel{flex:1 1 160px;min-width:0}
+.poolbar input[type=search],.poolbar select,#deckName,#deckCls,#impCls,#deckSel,#oppDeckSel{font:inherit;background:var(--mat);color:var(--ink);border:1px solid var(--line);border-radius:6px;padding:6px 8px;min-width:0}
+.poolbar input[type=search]{flex:1 1 160px}
+.poolbar input[type=checkbox]{flex:none;padding:0;width:auto}
+.poolbar label{white-space:nowrap}
+.pool{display:flex;flex-direction:column}
+.prow{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:10px;align-items:center;padding:8px 0;border-bottom:1px solid var(--line)}
+.pname{font-weight:700;font-size:13.5px;display:flex;flex-wrap:wrap;gap:4px;align-items:center}
+.ptext{font-size:12px;color:var(--muted);white-space:pre-line;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;cursor:pointer;margin-top:2px}
+.ptext.open{display:block}
+.pctl{display:flex;align-items:center;gap:4px}
+.pctl button{min-width:34px;padding:5px 0;font-family:var(--f-num)}
+.pctl .pdel{min-width:0;padding:5px 8px;font-family:var(--f-body);font-size:12px;color:var(--danger)}
+.pc{font-family:var(--f-num);font-weight:700;min-width:2ch;text-align:center;font-variant-numeric:tabular-nums}
+.pc.on{color:var(--accent)}
+.dsum{display:flex;gap:14px;font-family:var(--f-num);font-weight:700;font-size:15px}
+.dlist{display:flex;flex-direction:column;max-height:340px;overflow:auto}
+.drow{display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:8px;align-items:center;padding:4px 0;border-bottom:1px solid var(--line);font-size:12.5px}
+.dsec{font-size:11px;letter-spacing:.1em;color:var(--muted);font-weight:700;padding-top:6px}
+.saved{display:flex;flex-direction:column;gap:6px}
+.srow{display:flex;flex-wrap:wrap;justify-content:space-between;gap:6px;align-items:center;font-size:13px}
+.srow button{font-size:12px;padding:4px 8px}
+@media (max-width:700px){.pctl button{min-width:40px;min-height:38px}.deckpanel{position:static}}
+
+/* ---------- スマホ ---------- */
+@media (max-width:700px){
+  body{font-size:13px;padding-block:10px calc(190px + env(safe-area-inset-bottom,0px))}
+  body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top,0px);z-index:10;background:var(--mat)}
+  .wrap{gap:10px}
+  h1{font-size:16px}
+  header.top .toolbar button{padding:6px 9px;font-size:12px}
+  .mobile-only{display:flex}
+  .desk-only{display:none}
+  .turnbar{gap:4px 10px}
+  .turnlbl{font-size:14px}
+  /* 上部の数値を固定 */
+  .stats{position:sticky;top:env(safe-area-inset-top,0px);z-index:5;background:var(--mat);padding-block:6px;
+    display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:5px}
+  .stat{display:grid;grid-template-columns:1fr 1fr;gap:3px;padding:5px;text-align:center}
+  .stat .lbl{grid-column:1/-1;order:0;font-size:10px;letter-spacing:.04em}
+  .stat .val{grid-column:1/-1;order:1;font-size:19px;min-width:0}
+  .stat button{order:2;line-height:30px;padding:0;font-size:15px}
+  .ppdots{display:none}
+  /* 場とEXは5枚を横一列のまま小さく */
+  .slots{gap:4px}
+  .slot{min-height:96px;border-radius:7px}
+  .slots.ex .slot{min-height:84px}
+  .slots .card{padding:4px 4px 3px;border-top-width:3px;border-radius:7px;gap:2px}
+  .slots .row1{flex-direction:column;gap:2px}
+  .slots .cost{min-width:18px;height:18px;font-size:11px}
+  .slots .cname{font-size:10px;line-height:1.25;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}
+  .slots .ctext{display:none}
+  .slots .cfoot{font-size:12px}
+  .slots .badge{font-size:9px;padding:0 3px}
+  .card.rested .cname::after{font-size:9px}
+  /* 手札は画面下に固定 */
+  #handZone{position:fixed;left:0;right:0;bottom:0;z-index:12;background:var(--surface);border-top:1px solid var(--line);
+    box-shadow:0 -4px 16px rgba(0,0,0,.14);gap:6px;
+    padding:8px max(12px,env(safe-area-inset-right,0px)) calc(8px + env(safe-area-inset-bottom,0px)) max(12px,env(safe-area-inset-left,0px))}
+  #handZone .zonehead{align-items:center}
+  .dockbtns button{padding:8px 12px;font-size:13px}
+  .handrow{min-height:0;padding-bottom:2px}
+  .handrow .card{width:108px}
+  .handrow .ctext{-webkit-line-clamp:2}
+  /* 選んだカードの操作は下から出す */
+  #detail{position:fixed;left:0;right:0;bottom:0;z-index:16;border-radius:14px 14px 0 0;max-height:75vh;overflow:auto;
+    box-shadow:0 -8px 30px rgba(0,0,0,.28);
+    padding:14px max(16px,env(safe-area-inset-right,0px)) calc(16px + env(safe-area-inset-bottom,0px)) max(16px,env(safe-area-inset-left,0px))}
+  body:not(.has-sel) #detail{display:none}
+  .closesel{display:inline-flex}
+  .detail .dtext{font-size:14px}
+  body.has-sel #handZone{visibility:hidden}
+  .detail .actions{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px}
+  .detail .actions button{font-size:13px;padding:10px 6px;min-height:44px}
+  .adj{gap:6px 8px}
+  .adj button{min-width:38px;min-height:36px}
+  .pile .btns button{padding:8px 10px;font-size:12.5px}
+  .log{max-height:150px}
+  /* 山札などの一覧も下から */
+  .overlay{align-items:flex-end;padding:env(safe-area-inset-top,0px) 0 0}
+  .modal{width:100%;border-radius:14px 14px 0 0;max-height:85vh}
+  .modal header{padding-left:max(14px,env(safe-area-inset-left,0px));padding-right:max(14px,env(safe-area-inset-right,0px))}
+  .modal header button{padding:8px 12px}
+  .modal .body{padding:10px max(14px,env(safe-area-inset-right,0px)) calc(14px + env(safe-area-inset-bottom,0px)) max(14px,env(safe-area-inset-left,0px))}
+  .mrow .actions{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:5px}
+  .mrow .actions button{padding:9px 4px;font-size:12px;min-height:40px}
+}
+</style>
+<script src="peerjs.min.js"></script>
+</head>
+<body>
+
+
+<div class="wrap">
+  <header class="top">
+    <h1>エボルヴ一人回し卓</h1>
+    <div class="toolbar">
+      <button id="btnUndo" type="button">元に戻す</button>
+      <button id="btnSetup" type="button">デッキ編集・リセット</button>
+    </div>
+  </header>
+
+  <!-- SETUP -->
+  <section id="setupView" class="setup2">
+    <div class="setcol">
+      <p class="fmt" id="cloudMsg" style="margin:0">保存先を確認中…</p>
+      <details class="panel" id="importBox">
+        <summary><h2 style="display:inline">カードを取り込む</h2></summary>
+        <p class="fmt">1行1種類で <code>カード名|コスト|種類|攻撃|体力|テキスト</code>。先頭に枚数が付いていても読める（取り込みでは枚数を無視）。種類は「フォロワー」「スペル」「アミュレット」。テキスト内の改行は <code>\n</code>。同じ名前のカードを取り込むと上書きするから、テキストの直しもここでできる。</p>
+        <textarea id="importText" spellcheck="false" placeholder="カード名|2|フォロワー|2|2|【ファンファーレ】カードを1枚引く。"></textarea>
+        <div class="opts">
+          <label><input type="radio" name="impAs" id="impMain" checked> メインデッキ用</label>
+          <label><input type="radio" name="impAs" id="impEvo"> エボルヴデッキ用</label>
+          <label>クラス <select id="impCls"></select></label>
+          <button id="btnImport" class="primary" type="button">取り込む</button>
+        </div>
+        <div id="importMsg" class="fmt"></div>
+        <div class="toolbar"><button id="btnExport" type="button">今のカードをテキストで書き出す（バックアップ）</button></div>
+        <div id="exportBox" class="zone" hidden>
+          <textarea id="exportText" readonly spellcheck="false"></textarea>
+          <div class="toolbar"><button id="btnCopyExport" type="button" class="primary">コピー</button></div>
+          <p class="fmt">メモなどに保存しておけば、上の欄に貼って「取り込む」を押すだけで全部戻せる。クラスとエボルヴの区別も入ってるから、取り込むときの選択は何でもいい。</p>
+        </div>
+      </details>
+      <div class="panel">
+        <div class="zonehead"><h2>カードプール</h2><span class="n" id="poolN"></span></div>
+        <div class="poolbar">
+          <input id="poolQ" type="search" placeholder="名前・テキストで検索">
+          <label><input type="checkbox" id="poolShowToken"> トークンも表示</label>
+          <select id="poolAttr" aria-label="属性"><option value="">属性：すべて</option><option>火属性</option><option>水属性</option><option>風属性</option><option>土属性</option><option>光属性</option><option>闇属性</option></select>
+          <select id="poolType"><option value="all">すべて</option><option value="follower">フォロワー</option><option value="spell">スペル</option><option value="amulet">アミュレット</option><option value="evo">エボルヴ</option></select>
+          <button id="btnClearSample" type="button" hidden>サンプルを消す</button>
+          <label><input type="checkbox" id="poolOnlyCls" checked> デッキのクラスとニュートラルだけ</label>
+          <button id="btnSetCls" type="button" hidden></button>
+        </div>
+        <div class="pool" id="pool"></div>
+      </div>
+    </div>
+    <aside class="panel deckpanel">
+      <div class="zonehead"><h2>デッキ</h2><button id="btnNewDeck2" type="button">＋新しいデッキ</button></div>
+      <select id="deckSel" aria-label="編集するデッキ"></select>
+      <label class="opts">名前 <input id="deckName" type="text" placeholder="デッキ名"></label>
+      <label class="opts">クラス <select id="deckCls"></select></label>
+      <div class="dsum" id="deckSum"></div>
+      <div id="validate"></div>
+      <div class="dlist" id="deckList"></div>
+      <div class="toolbar"><button id="btnDupDeck" type="button">複製</button><button id="btnDelDeck" type="button" class="danger">このデッキを削除</button></div>
+      <details id="deckImportBox">
+        <summary class="fmt" style="cursor:pointer">リストからデッキを作る</summary>
+        <div class="zone" style="padding-top:6px">
+          <p class="fmt" style="margin:0">1行に「枚数 カード名」。「エボルヴ」という行より下はエボルヴデッキ。最初の行を「#デッキ名」にすると名前になる。</p>
+          <textarea id="deckImportText" spellcheck="false" style="min-height:140px"></textarea>
+          <div class="toolbar"><button id="btnDeckImport" type="button" class="primary">新しいデッキとして作る</button></div>
+          <div id="deckImportMsg" class="fmt"></div>
+        </div>
+      </details>
+      <p class="fmt" style="margin:0">変更は自動で保存される。</p>
+      <div class="opts">
+        <label><input type="radio" name="order" id="ordFirst" value="first" checked> 先攻</label>
+        <label><input type="radio" name="order" id="ordSecond" value="second"> 後攻（EP3で開始）</label>
+        <label>初期手札 <input type="number" id="optHand" min="1" max="10" value="4"></label>
+        <label><input type="checkbox" id="optSkipDraw" checked> 先攻1ターン目はドローしない</label>
+      </div>
+      <label class="opts">対戦相手 <select id="oppDeckSel"></select></label>
+      <div class="fmt" id="cpuInfo"></div>
+      <div id="netBox" class="zone" hidden>
+        <h2>オンライン対戦</h2>
+        <label class="opts">名前 <input id="netName" type="text" placeholder="相手に表示する名前" style="flex:1 1 120px;min-width:0;font:inherit;background:var(--mat);color:var(--ink);border:1px solid var(--line);border-radius:6px;padding:5px 8px"></label>
+        <div class="toolbar"><button id="btnHost" type="button">部屋を作る</button><button id="btnNetClose" type="button" hidden>切断</button></div>
+        <div class="toolbar"><input id="netCode" type="text" placeholder="合言葉" autocapitalize="characters" style="width:8em;font:inherit;background:var(--mat);color:var(--ink);border:1px solid var(--line);border-radius:6px;padding:5px 8px"><button id="btnJoin" type="button">参加する</button></div>
+        <div id="netStatus" class="fmt"></div>
+      </div>
+      <div id="feedBox" class="zone" hidden>
+        <h2>カードの配信元</h2>
+        <p class="fmt" style="margin:0">管理する人から教わった配信コードを入れると、カードとデッキがその人の最新版にそろう。開くたびに自動で更新される。</p>
+        <div class="toolbar"><input id="feedId" type="text" placeholder="配信コード" autocomplete="off" style="flex:1 1 140px;min-width:0;font:inherit;background:var(--mat);color:var(--ink);border:1px solid var(--line);border-radius:6px;padding:5px 8px"><button id="btnFeed" type="button">保存して読み込む</button></div>
+        <div id="feedStatus" class="fmt"></div>
+      </div>
+      <button id="btnStart" class="primary" type="button">このデッキで開始</button>
+      <div id="startMsg" class="warn"></div>
+    </aside>
+  </section>
+
+  <!-- GAME -->
+  <section id="gameView" class="zone" hidden>
+    <div id="mullBanner" class="banner" hidden>
+      <span>初期手札を確認。マリガンは1回、手札を全部山札の下に置いて、山札の上から同じ枚数を引く。</span>
+      <span class="toolbar"><button id="btnMull" type="button">マリガン</button><button id="btnKeep" class="primary" type="button">キープしてゲーム開始</button></span>
+    </div>
+    <div id="endBanner" class="banner" hidden>
+      <span><strong id="endText"></strong> <span id="endSub" class="fmt"></span></span>
+      <span class="toolbar"><button id="btnRematch" class="primary" type="button">もう一度</button><button id="btnToSetup" type="button">デッキ選択へ</button></span>
+    </div>
+    <div class="turnbar">
+      <span class="turnlbl" id="turnLbl">-</span>
+      <button id="btnTurnStart" class="primary desk-only" type="button">ターン開始（PP+1・スタンド・ドロー）</button>
+      <button id="btnTurnEnd" class="desk-only" type="button">ターン終了</button>
+      <details class="optsbox"><summary>設定</summary>
+        <div class="optsin">
+          <label><input type="checkbox" id="optAuto" checked> ターン終了したら次のターンを自動で開始</label>
+          <label><input type="checkbox" id="optAbil" checked> 能力を自動で処理</label>
+          <span class="maxpp">最大PP <button data-adj="maxPP:-1" type="button">−</button><button data-adj="maxPP:1" type="button">＋</button></span>
+          <span class="maxpp">SEP <button data-adj="sep:-1" type="button">−</button><button data-adj="sep:1" type="button">＋</button></span>
+        </div>
+      </details>
+    </div>
+    <div class="stats">
+      <div class="stat life"><span class="lbl">ライフ</span><button data-adj="life:-1" type="button">−</button><span class="val" id="vLife">20</span><button data-adj="life:1" type="button">＋</button></div>
+      <div class="stat pp"><span class="lbl">PP</span><button data-adj="pp:-1" type="button">−</button><span class="val" id="vPP">0/0</span><button data-adj="pp:1" type="button">＋</button><span class="ppdots" id="ppDots"></span></div>
+      <div class="stat ep"><span class="lbl" id="lblEP">EP</span><button data-adj="ep:-1" type="button">−</button><span class="val" id="vEP">0</span><button data-adj="ep:1" type="button">＋</button></div>
+      <div class="stat"><span class="lbl">相手</span><button data-adj="opp:-1" type="button">−</button><span class="val" id="vOpp">20</span><button data-adj="opp:1" type="button">＋</button></div>
+    </div>
+
+    <div class="table">
+      <div class="zone">
+        <div class="zone">
+          <div class="zonehead"><h2>相手の場</h2><span class="toolbar" style="align-items:center"><span class="n" id="nOpp">0/5</span><button type="button" id="btnOppGrave">相手の墓場 <span id="nOppGrave">0</span></button><button type="button" id="btnOppAdd">＋相手のフォロワー</button></span></div>
+          <div class="slots opp" id="oppField"></div>
+        </div>
+        <div class="zone">
+          <div class="zonehead"><h2>場</h2><span class="n" id="nField">0/5</span></div>
+          <div class="slots" id="field"></div>
+        </div>
+        <div class="zone">
+          <div class="zonehead"><h2>EXエリア</h2><span class="n" id="nEx">0/5</span></div>
+          <div class="slots ex" id="ex"></div>
+        </div>
+        <div class="zone" id="handZone">
+          <div class="zonehead"><h2>手札 <span class="n" id="nHand">0</span></h2>
+            <span class="dockbtns mobile-only"><button id="pxStart" data-proxy="btnTurnStart" type="button">ターン開始</button><button id="pxEnd" data-proxy="btnTurnEnd" class="primary" type="button">ターン終了</button></span></div>
+          <div class="handrow" id="hand"></div>
+        </div>
+      </div>
+
+      <aside class="side">
+        <div class="panel detail" id="detail"></div>
+        <div class="panel">
+          <div class="piles">
+            <div class="pile"><div class="top"><h2>山札</h2><span class="cnt" id="cDeck">0</span></div>
+              <div class="btns"><button data-pile="draw" type="button">1枚引く</button><button data-pile="view:deck" type="button">見る</button><button data-pile="shuffle" type="button">シャッフル</button><button data-pile="mill" type="button">上を墓場</button></div></div>
+            <div class="pile"><div class="top"><h2>墓場</h2><span class="cnt" id="cGrave">0</span></div>
+              <div class="gbreak" id="graveBreak"></div>
+              <div class="btns"><button data-pile="view:grave" type="button">見る</button></div></div>
+            <div class="pile"><div class="top"><h2>エボルヴ</h2><span class="cnt" id="cEvo">0</span></div>
+              <div class="btns"><button data-pile="view:evo" type="button">未使用</button><button data-pile="view:evoUsed" type="button">使用済み <span id="cEvoUsed">0</span></button></div></div>
+            <div class="pile"><div class="top"><h2>消滅</h2><span class="cnt" id="cBan">0</span></div>
+              <div class="btns"><button data-pile="view:banish" type="button">見る</button></div></div>
+          </div>
+        </div>
+        <div class="panel">
+          <h2>ログ</h2>
+          <div class="log" id="log"></div>
+        </div>
+      </aside>
+    </div>
+  </section>
+</div>
+
+<div class="overlay" id="overlay" hidden>
+  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="mTitle">
+    <header><strong id="mTitle"></strong><button id="mClose" type="button">閉じる</button></header>
+    <div class="body" id="mBody"></div>
+  </div>
+</div>
+
+<script>
+const SAMPLE_MAIN = `# サンプル（架空カード）。自分のデッキに置き換えて使う
+3|見習いの剣士|1|フォロワー|1|2|
+3|森の斥候|1|フォロワー|1|1|【ファンファーレ】カードを1枚引く。
+3|盾持ちの衛兵|2|フォロワー|1|3|【守護】
+3|疾風の槍兵|2|フォロワー|2|2|【突進】
+3|小さな火花|1|スペル|||相手のフォロワー1体に2ダメージ。
+3|古びた祭壇|2|アミュレット|||【カウントダウン3】\\n【ラストワード】フォロワー1体を出す。
+3|熟練の弓手|3|フォロワー|2|3|【ファンファーレ】相手のフォロワー1体に1ダメージ。
+3|戦場の伝令|3|フォロワー|3|3|
+3|知恵の泉|2|スペル|||カードを2枚引く。
+3|鉄壁の騎士|4|フォロワー|3|5|【守護】
+3|嵐を呼ぶ者|5|フォロワー|4|4|【疾走】
+3|古竜の目覚め|6|フォロワー|6|6|【ファンファーレ】相手のフォロワーすべてに2ダメージ。
+4|旅の傭兵|2|フォロワー|2|1|`;
+const SAMPLE_EVO = `# サンプル（架空カード）
+2|見習いの剣士・覚醒|0|フォロワー|3|4|
+2|疾風の槍兵・覚醒|0|フォロワー|4|4|【突進】【進化時】カードを1枚引く。
+2|鉄壁の騎士・覚醒|0|フォロワー|5|7|【守護】`;
+
+const $ = id => document.getElementById(id);
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const ZONES = ['deck','hand','field','ex','grave','banish','evo','evoUsed'];
+const ZNAME = {deck:'山札',hand:'手札',field:'場',ex:'EXエリア',grave:'墓場',banish:'消滅',evo:'エボルヴデッキ',evoUsed:'エボルヴ（使用済み）'};
+const TYPE = t => /スペル|spell/i.test(t) ? 'spell' : /アミュ|amulet|トレジャー/i.test(t) ? 'amulet' : 'follower';
+
+let S = null, history = [], sel = null, uidSeq = 1;
+
+function parse(text, isEvo){
+  const defs = [], errs = [];
+  text.split('\n').forEach((raw, i) => {
+    const line = raw.trim();
+    if (!line || line.startsWith('#')) return;
+    let p = line.split('|').map(s => s.trim());
+    let n = parseInt(p[0], 10);
+    if (isNaN(n)) n = 1; else p = p.slice(1);
+    const [name, cost, type, atk, def, ...rest] = p;
+    if (!name) { errs.push(`${i+1}行目: カード名がない`); return; }
+    defs.push({n, name, cost: cost === '' || cost == null ? '' : cost, type: type || 'フォロワー',
+      atk: atk === '' || atk == null ? null : Number(atk), def: def === '' || def == null ? null : Number(def),
+      text: rest.join('|').replace(/\\n/g, '\n'), evo: !!isEvo});
+  });
+  return {defs, errs};
+}
+
+/* ---------- カードプールとデッキ作成 ---------- */
+const LS = {
+  get(k, d){ try { const v = localStorage.getItem(k); return v == null ? d : JSON.parse(v); } catch(_){ return d; } },
+  set(k, v){ try { localStorage.setItem(k, JSON.stringify(v)); } catch(_){} }
+};
+let LIB = [], DK = {name:'', main:{}, evo:{}}, SAVED = [], pendingDel = null, pendingClear = false;
+const keyOf = c => (c.evo ? 'E:' : 'M:') + c.name;
+const libGet = k => LIB.find(c => keyOf(c) === k);
+const CLASSES = ['ロイヤル','ドラゴン','ナイトメア','ウィッチ','ビショップ','エルフ','グラブル','ニュートラル'];
+const fixText = s => String(s || '').replace(/［王冠］/g, 'ロイヤル・');
+/* 複数デッキ：SAVED がデッキの一覧、DK はその中の編集中の1つ */
+const newId = () => 'd' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+function ensureDecks(){
+  SAVED = Array.isArray(SAVED) ? SAVED : [];
+  SAVED.forEach(d => { d.id = d.id || newId(); d.main = d.main || {}; d.evo = d.evo || {}; d.name = d.name || 'デッキ'; });
+  let cur = DK && DK.id ? SAVED.find(d => d.id === DK.id) : null;
+  if (cur && DK !== cur) Object.assign(cur, DK, {id: cur.id});
+  if (!cur && DK && (Object.keys(DK.main || {}).length || Object.keys(DK.evo || {}).length)){
+    const same = DK.name ? SAVED.find(d => d.name === DK.name) : null;
+    if (same){ Object.assign(same, DK, {id: same.id}); cur = same; }
+    else { cur = {...DK, id: newId(), name: DK.name || `デッキ${SAVED.length + 1}`}; SAVED.push(cur); }
+  }
+  if (!cur) cur = SAVED[0] || null;
+  if (!cur){ cur = {id: newId(), name: 'デッキ1', cls: '', main: {}, evo: {}}; SAVED.push(cur); }
+  DK = cur;
+}
+function persist(){ LS.set('evolveSolo.lib', LIB); LS.set('evolveSolo.deck', DK); LS.set('evolveSolo.saved', SAVED); cloudSave(); }
+
+/* ---------- クラウド保存（自分だけが読める場所に、カードとデッキを保存） ---------- */
+const cloud = {db: null, uid: null, state: 'checking', timer: null, busy: false, again: false, chunks: 0, at: ''};
+const CHUNK = 250;
+function setCloudMsg(){
+  const el = $('cloudMsg'); if (!el) return;
+  const t = {
+    checking: '保存先を確認中…',
+    local: '保存先：このブラウザだけ（クラウドにつながらない）。書き出しでバックアップを取っておいて。',
+    loading: 'クラウドから読み込み中…',
+    ok: '保存先：クラウド（ほかの端末で開いても同じ）',
+    saving: 'クラウドに保存中…',
+    error: 'クラウドに保存できなかった。このブラウザには保存してある。',
+  }[cloud.state];
+  el.textContent = t + (cloud.state === 'ok' && cloud.at ? `。最後に保存：${cloud.at}` : '');
+}
+function cloudSave(){ if (!cloud.db) return; clearTimeout(cloud.timer); cloud.timer = setTimeout(flushCloud, 800); }
+async function flushCloud(){
+  if (!cloud.db) return;
+  if (cloud.busy){ cloud.again = true; return; }
+  cloud.busy = true; cloud.state = 'saving'; setCloudMsg();
+  try {
+    const base = 'data/users/' + cloud.uid;
+    const lib = LIB.filter(c => !c.sample);
+    const n = Math.ceil(lib.length / CHUNK);
+    for (let i = 0; i < n; i++) await cloud.db.doc(`${base}/lib${i}`).set({cards: lib.slice(i * CHUNK, (i + 1) * CHUNK)});
+    for (let i = n; i < cloud.chunks; i++) await cloud.db.doc(`${base}/lib${i}`).delete();
+    await cloud.db.doc(`${base}/meta`).set({v: 1, chunks: n, deck: DK, saved: SAVED, cpu: CPUMEM, savedAt: new Date().toISOString()});
+    cloud.chunks = n; cloud.state = 'ok';
+    cloud.at = new Date().toLocaleTimeString('ja-JP', {hour: '2-digit', minute: '2-digit'});
+  } catch (e){ cloud.state = 'error'; }
+  cloud.busy = false; setCloudMsg();
+  if (cloud.again){ cloud.again = false; flushCloud(); }
+}
+async function cloudInit(){
+  try {
+    const use = window.claude && window.claude.use;
+    const db = use ? await window.claude.use('db') : null;
+    const user = use ? await window.claude.use('user') : null;
+    const uid = user ? await user.id() : null;
+    if (!db || !uid){ cloud.state = 'local'; setCloudMsg(); return; }
+    cloud.state = 'loading'; setCloudMsg();
+    const base = 'data/users/' + uid;
+    const meta = await db.doc(`${base}/meta`).get();
+    cloud.db = db; cloud.uid = uid;
+    if (meta.exists){
+      const m = JSON.parse(JSON.stringify(meta.data()));
+      const cards = [];
+      for (let i = 0; i < (m.chunks || 0); i++){
+        const s = await db.doc(`${base}/lib${i}`).get();
+        if (s.exists) cards.push(...JSON.parse(JSON.stringify(s.data().cards || [])));
+      }
+      cloud.chunks = m.chunks || 0;
+      LIB = cards.length ? cards : LIB.filter(c => c.sample);
+      DK = m.deck || {name: '', main: {}, evo: {}}; DK.main = DK.main || {}; DK.evo = DK.evo || {};
+      SAVED = m.saved || [];
+      ensureDecks();
+      if (m.cpu){ CPUMEM = m.cpu; LS.set('evolveSolo.cpu', CPUMEM); }
+      LS.set('evolveSolo.lib', LIB); LS.set('evolveSolo.deck', DK); LS.set('evolveSolo.saved', SAVED);
+      cloud.state = 'ok';
+      cloud.at = m.savedAt ? new Date(m.savedAt).toLocaleString('ja-JP', {month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit'}) : '';
+      if (!S) render();
+    } else {
+      cloud.state = 'ok';
+      // 初めて：このブラウザにあるカードとデッキをクラウドに移す
+      if (LIB.some(c => !c.sample) || SAVED.length) await flushCloud();
+    }
+  } catch (e){ cloud.state = cloud.db ? 'error' : 'local'; }
+  setCloudMsg();
+}
+function exportCards(){
+  return LIB.filter(c => !c.sample).sort(byCost).map(c => [
+    c.name, c.cost, `${c.cls ? c.cls + '・' : ''}${c.token ? 'トークン・' : ''}${c.evo ? 'エボルヴ・' : ''}${c.type}`,
+    c.atk ?? '', c.def ?? '', String(c.text || '').replace(/\n/g, '\\n'),
+  ].join('|')).join('\n');
+}
+function importCards(text, asEvo, sample, cls){
+  const {defs, errs} = parse(text, asEvo); let add = 0, upd = 0;
+  defs.forEach(d => {
+    let type = d.type, cl = cls;
+    const cm = type.match(/^(ロイヤル|ドラゴン|ナイトメア|ウィッチ|ビショップ|エルフ|グラブル|ニュートラル)・/);
+    if (cm){ cl = cm[1]; type = type.slice(cm[0].length); }
+    const token = /トークン/.test(type); type = type.replace(/トークン・?/, '');
+    const evo = !!asEvo || /エボルヴ|evolve/i.test(type);
+    const c = {name: d.name, cost: d.cost, type: type.replace(/エボルヴ・?/, '') || 'フォロワー', atk: d.atk, def: d.def, text: fixText(d.text), evo, token, sample: !!sample, cls: cl || ''};
+    const i = LIB.findIndex(x => keyOf(x) === keyOf(c));
+    if (i >= 0){ LIB[i] = c; upd++; } else { LIB.push(c); add++; }
+  });
+  return {add, upd, errs, defs};
+}
+// エボルヴカードはコストがないので、同名の進化前カードのコストで並べる
+const costNum = c => {
+  let n = parseInt(c.cost, 10);
+  if (isNaN(n) && c.evo){ const b = LIB.find(x => !x.evo && x.name === c.name); n = b ? parseInt(b.cost, 10) : NaN; }
+  return isNaN(n) ? 99 : n;
+};
+const byCostInst = (a, b) => (costNum(D(a)) - costNum(D(b))) || D(a).name.localeCompare(D(b).name, 'ja');
+let deckByCost = false;
+const byCost = (a, b) => (a.evo - b.evo) || (costNum(a) - costNum(b)) || a.name.localeCompare(b.name, 'ja');
+const deckCount = part => Object.values(DK[part]).reduce((a, n) => a + n, 0);
+/* コラボタイトル（グラブル）：タイトルだけで組むデッキと、既存のクラスで組むデッキの両方で使える */
+const TITLES = ['グラブル'];
+const titleOf = c => TITLES.find(t => new RegExp(`[（・]${t}[・）]`).test(String(c.type)) || c.cls === t) || '';
+const realCls = c => TITLES.includes(c.cls) ? '' : (c.cls || '');
+/* このデッキで使えるか */
+function usableIn(c, deckCls){
+  if (!deckCls) return true;
+  if (TITLES.includes(deckCls)) return titleOf(c) === deckCls;
+  const rc = realCls(c);
+  return rc === deckCls || rc === 'ニュートラル';
+}
+function badges(c){
+  const tt = titleOf(c), rc = realCls(c);
+  return `${tt ? `<span class="badge evo">${esc(tt)}</span>` : ''}<span class="badge">${rc ? esc(rc) : 'クラス未設定'}</span><span class="badge">${esc(c.evo ? 'エボルヴ' : c.type)}</span><span class="badge">コスト${esc(c.cost === '' ? '-' : c.cost)}</span>${c.atk != null ? `<span class="badge">${c.atk}/${c.def}</span>` : ''}${c.sample ? '<span class="badge">サンプル</span>' : ''}`;
+}
+function renderSetup(){
+  const q = $('poolQ').value.trim(), ty = $('poolType').value;
+  const only = $('poolOnlyCls').checked && DK.cls;
+  const inCls = c => !only || !c.cls || usableIn(c, DK.cls);
+  const attr = $('poolAttr').value;
+  const hasAttr = (c, a) => String(c.type).includes(a) || String(c.type).includes('全属性');
+  // 検索は名前・テキスト・タイプ。「○属性」で探すと全属性も出る
+  const qOk = c => !q || (c.name + c.text + c.type).includes(q) || (/^[火水風土光闇]属性$/.test(q) && hasAttr(c, q));
+  const showTok = $('poolShowToken').checked;
+  const list = LIB.filter(c => (showTok || !c.token) && qOk(c) && (!attr || hasAttr(c, attr)) && (ty === 'all' || (ty === 'evo' ? c.evo : !c.evo && TYPE(c.type) === ty)) && inCls(c)).sort(byCost);
+  $('poolN').textContent = `${LIB.length}種類`;
+  $('pool').innerHTML = list.length ? list.map(c => {
+    const k = keyOf(c), n = DK[c.evo ? 'evo' : 'main'][k] || 0, ek = esc(k);
+    return `<div class="prow"><div style="min-width:0"><div class="pname">${esc(c.name)} ${badges(c)}${titleOf(c) ? `<select class="clsSel" data-clsk="${ek}" aria-label="クラス">${['', ...CLASSES.filter(x => !TITLES.includes(x))].map(x => `<option value="${x}" ${realCls(c) === x ? 'selected' : ''}>${x || 'クラスを選ぶ'}</option>`).join('')}</select>` : ''}</div>${c.text ? `<div class="ptext">${esc(c.text)}</div>` : ''}</div>
+      <div class="pctl">${c.token ? '<span class="badge">トークン（デッキに入れない）</span>' : `<button type="button" data-k="${ek}" data-cnt="-1" aria-label="1枚減らす">−</button><span class="pc ${n ? 'on' : ''}">${n}</span><button type="button" data-k="${ek}" data-cnt="1" aria-label="1枚増やす">＋</button>`}<button type="button" class="pdel" data-k="${ek}" data-del="1">${pendingDel === k ? 'もう一度で削除' : '削除'}</button></div></div>`;
+  }).join('') : `<p class="fmt">${LIB.length ? '条件に合うカードがない。' : 'まだカードがない。「カードを取り込む」から貼り付けて追加して。'}</p>`;
+  $('btnClearSample').hidden = !LIB.some(c => c.sample);
+  const unset = LIB.filter(c => !c.cls).length;
+  $('btnSetCls').hidden = !unset;
+  $('btnSetCls').textContent = `クラス未設定の${unset}種類を${$('impCls').value}にする`;
+  $('deckCls').value = DK.cls || '';
+  if (document.activeElement !== $('deckName')) $('deckName').value = DK.name || '';
+  const mc = deckCount('main'), ec = deckCount('evo');
+  $('deckSum').innerHTML = `<span>メイン ${mc}枚</span><span>エボルヴ ${ec}枚</span>`;
+  const w = [];
+  if (mc < 40 || mc > 50) w.push(`メインデッキは40〜50枚（今${mc}枚）`);
+  if (ec > 10) w.push(`エボルヴデッキは10枚まで（今${ec}枚）`);
+  Object.entries(DK.main).forEach(([k, n]) => { if (n > 3) w.push(`「${k.slice(2)}」が${n}枚（同名は3枚まで）`); });
+  const inDeck = [...Object.keys(DK.main), ...Object.keys(DK.evo)].map(libGet).filter(Boolean);
+  if (!DK.cls) w.push('デッキのクラスを選んで');
+  else if (TITLES.includes(DK.cls)) inDeck.forEach(c => { if (!usableIn(c, DK.cls)) w.push(`「${c.name}」は${DK.cls}のカードじゃない（${DK.cls}デッキは${DK.cls}のカードだけ。ニュートラルも使えない）`); });
+  else inDeck.forEach(c => { if (c.cls && !usableIn(c, DK.cls)) w.push(realCls(c) ? `「${c.name}」は${realCls(c)}のカード（このデッキは${DK.cls}）` : `「${c.name}」のクラスが未設定（カードプールで選んで）`); });
+  if (inDeck.some(c => !c.cls)) w.push('クラス未設定のカードが入ってる');
+  $('validate').innerHTML = w.length
+    ? `<div class="warn">${w.map(x => `<span>${esc(x)}</span>`).join('')}<span>※警告だけ。このままでも回せる。</span></div>`
+    : `<div class="ok">構築ルールOK。</div>`;
+  const rows = part => Object.entries(DK[part]).map(([k, n]) => ({k, n, c: libGet(k)})).filter(r => r.c && r.n).sort((a, b) => byCost(a.c, b.c))
+    .map(r => `<div class="drow"><span class="pc on">${r.n}</span><span>${esc(r.c.name)}</span><span class="pctl"><button type="button" data-k="${esc(r.k)}" data-cnt="-1" aria-label="1枚減らす">−</button><button type="button" data-k="${esc(r.k)}" data-cnt="1" aria-label="1枚増やす">＋</button></span></div>`).join('');
+  const rm = rows('main'), re = rows('evo');
+  $('deckList').innerHTML = (rm || re) ? `${rm ? `<div class="dsec">メイン</div>${rm}` : ''}${re ? `<div class="dsec">エボルヴ</div>${re}` : ''}` : '<p class="fmt">カードプールの＋でデッキに入れる。</p>';
+  renderDeckSel();
+  netRenderSetup();
+  const ov = LS.get('evolveSolo.oppDeck', '');
+  $('oppDeckSel').innerHTML = '<option value="">CPUなし（相手の場は手動で置く）</option>'
+    + SAVED.map(d => `<option value="${esc(d.id)}" ${d.id === ov ? 'selected' : ''}>CPU：${esc(d.name || '名前なし')}（${Object.values(d.main).reduce((a, b) => a + b, 0)}枚）</option>`).join('');
+  const mem = ov && CPUMEM[ov];
+  $('cpuInfo').textContent = !ov ? '' : mem ? `このデッキのCPU：${mem.games}戦${mem.wins}勝・攻撃性 ${mem.aggro.toFixed(2)}（対戦するたびに調整される）` : 'このデッキのCPUはまだ対戦してない。';
+}
+function renderDeckSel(){
+  $('deckSel').innerHTML = SAVED.map(d => `<option value="${esc(d.id)}" ${d === DK ? 'selected' : ''}>${esc(d.name || '名前なし')}（${d.cls ? esc(d.cls) + '・' : ''}${Object.values(d.main).reduce((a, b) => a + b, 0)}枚）</option>`).join('');
+  $('btnDelDeck').textContent = pendingDel === 'deck' ? 'もう一度押すと削除' : 'このデッキを削除';
+}
+
+function inst(d){ return {u: uidSeq++, d, rest:false, am:0, dm:0, cnt:0, evo:null}; }
+function shuffle(a){ for (let i=a.length-1;i>0;i--){ const j=Math.floor(Math.random()*(i+1)); [a[i],a[j]]=[a[j],a[i]]; } return a; }
+function D(c){ return S.defs[c.d]; }
+function log(msg){ S.log.push({t: S.turn ? `T${S.turn}` : '準備', m: msg}); if (S.log.length > 300) S.log.shift(); if (S.pvp && !NET.applying) NET.queue.push(msg); }
+function save(){ history.push(JSON.stringify({S, uidSeq})); if (history.length > 80) history.shift(); }
+function undo(){ const h = history.pop(); if (!h) return; const o = JSON.parse(h); S = o.S; uidSeq = o.uidSeq; render(); }
+
+function start(){
+  const defs = [], deck = [], evo = [];
+  for (const part of ['main', 'evo']) for (const [k, n] of Object.entries(DK[part])){
+    const c = libGet(k); if (!c || !n) continue;
+    const i = defs.push({...c, evo: part === 'evo'}) - 1;
+    for (let j = 0; j < n; j++) (part === 'evo' ? evo : deck).push(inst(i));
+  }
+  if (!deck.length){ $('startMsg').textContent = 'メインデッキにカードが入ってない。カードプールの＋で入れて。'; return; }
+  $('startMsg').textContent = '';
+  const first = $('ordFirst').checked;
+  const hn = Math.max(1, Math.min(10, parseInt($('optHand').value,10) || 4));
+  S = {defs, deck: shuffle(deck), hand: [], field: [], ex: [], grave: [], banish: [], evo, evoUsed: [],
+    life: 20, opp: 20, oppF: [], oppGraveN: 0, pp: 0, maxPP: 0, ep: first ? 0 : 3, sep: 2, rolls: [], rollT: -1, turn: 0, first, handN: hn,
+    skipDraw: $('optSkipDraw').checked, phase: 'mull', mulled: false, log: [], gid: Date.now(), O: null, over: null};
+  history = []; sel = null;
+  for (let i=0;i<hn;i++) S.hand.push(S.deck.shift());
+  log(`${first?'先攻':'後攻'}。初期手札${hn}枚を引いた。EP${S.ep}`);
+  // CPUのデッキ
+  if (NET.on){ S.pvp = true; log(`オンライン対戦。相手：${NET.oppName || '友だち'}`); }
+  const od = NET.on ? null : SAVED.find(d => d.id === $('oppDeckSel').value);
+  if (od){
+    const mem = cpuMem(od.id);
+    const O = {deckId: od.id, name: od.name || 'CPU', deck: [], hand: [], grave: [], evo: [], pp: 0, maxPP: 0, ep: first ? 3 : 0, turn: 0, played: [],
+      aggro: Math.max(0.2, Math.min(1.6, mem.aggro + (Math.random() - 0.5) * 0.3))};
+    for (const part of ['main', 'evo']) for (const [k, n] of Object.entries(od[part] || {})){
+      const c = libGet(k); if (!c || !n) continue;
+      const i = S.defs.push({...c, evo: part === 'evo'}) - 1;
+      for (let j = 0; j < n; j++) (part === 'evo' ? O.evo : O.deck).push(inst(i));
+    }
+    if (O.deck.length){
+      shuffle(O.deck); for (let i = 0; i < hn && O.deck.length; i++) O.hand.push(O.deck.shift());
+      // マリガン：コスト2以下のフォロワーが1枚もなければ、手札を山札の下に置いて上から引き直す（1回だけ）
+      const early = O.hand.filter(c => TYPE(D(c).type) === 'follower' && (Number(D(c).cost) || 0) <= 2).length;
+      if (!early){
+        const n = O.hand.length; O.deck.push(...O.hand.splice(0));
+        for (let i = 0; i < n; i++) O.hand.push(O.deck.shift());
+        O.mulled = true;
+      }
+      S.O = O; log(`対戦相手：CPU（${O.name}）。${first ? '後攻' : '先攻'}、EP${O.ep}`);
+      log(O.mulled ? '相手はマリガンした' : '相手はキープした');
+    }
+  }
+  render();
+}
+
+function find(u){
+  for (const z of ZONES){ const i = S[z].findIndex(c => c.u === u); if (i >= 0) return {z, i, c: S[z][i]}; }
+  return null;
+}
+function move(u, to, pos){
+  const f = find(u); if (!f) return false;
+  if ((to === 'field' || to === 'ex') && f.z !== to && S[to].length >= 5){ log(`${ZNAME[to]}がいっぱい（5枚）`); render(); return false; }
+  const c = f.c;
+  if (D(c).evo && !['evo','evoUsed','banish'].includes(to) && to !== 'field' && to !== 'ex' && to !== 'hand'){ to = 'evoUsed'; }
+  S[f.z].splice(f.i, 1);
+  if ((to === 'field' || to === 'ex') && f.z !== 'field' && f.z !== 'ex'){ c.ent = S.turn; c.evoT = null; }
+  if ((f.z === 'field' || f.z === 'ex') && to !== 'field' && to !== 'ex'){
+    if (c.evo){ c.evo.rest=false; S.evoUsed.push(c.evo); c.evo = null; }
+    c.rest = false; c.am = 0; c.dm = 0; c.cnt = 0; c.kw = []; c.dmg = 0; c.lb = 0; c.grant = null;
+  }
+  if (to === 'deck' && pos === 'top') S.deck.unshift(c); else S[to].push(c);
+  return true;
+}
+
+function draw(n=1){
+  for (let i=0;i<n;i++){
+    if (!S.deck.length){ log('山札が0枚。ドローできない（敗北条件）'); if (S.O) S.life = Math.min(S.life, 0); break; }
+    const c = S.deck.shift(); S.hand.push(c); log(`ドロー：${D(c).name}`);
+  }
+}
+
+function turnStart(){
+  save(); S.turn++; S.phase = 'play';
+  S.maxPP = Math.min(10, S.maxPP + 1); S.pp = S.maxPP;
+  [...S.field, ...S.ex].forEach(c => c.rest = false);
+  log(`ターン${S.turn}開始。PP ${S.pp}/${S.maxPP}、全カードをスタンド`);
+  if (S.turn === 1 && S.first && S.skipDraw) log('先攻1ターン目なのでドローなし'); else draw(1);
+  render();
+}
+async function turnEnd(){
+  if (S) S.cpuNow = false;
+  save();
+  log(`ターン${S.turn}終了`);
+  for (const c of [...S.field]){
+    if (!find(c.u)) continue;
+    await trigger(baseOf(c), 'エンドフェイズ', {self: c.u});
+    for (const g of (c.grant || [])){ const m = z2h(g).match(/自分のエンドフェイズが来たとき、(.+)/); if (m && find(c.u)) await runSegment(m[1], `${dispName(c)}（付与された能力）`, baseOf(c), {self: c.u}); }
+  }
+  while (S.hand.length > 7){
+    const u = await pickCards(S.hand, null, {title: `手札を${S.hand.length - 7}枚捨てる`, note: '手札の上限は7枚', skip: 'あとで自分で捨てる', btn: '捨てる'});
+    if (u == null) break;
+    await discard(u, typeof src !== 'undefined' ? src : null);
+  }
+  if (S.pvp){ if (!S.over){ S.phase = 'wait'; log('相手のターンへ'); history = []; render(); netFlush(); netSend({t: 'turn'}); } render(); return; }
+  if (S.O && !S.over){ await cpuTurn(); if (S.over){ render(); return; } }
+  if ($('optAuto').checked && S.hand.length <= 7){ turnStart(); return; }
+  render();
+}
+
+/* ---------- 相手の場と交戦 ---------- */
+const oppHp = o => o.def - (o.dmg || 0);
+const oppHas = (o, k) => (o.kw || []).includes(k);
+const findOpp = u => (S && S.oppF || []).find(o => o.u === u);
+const myHp = c => (defOf(c) ?? 0) - (c.dmg || 0);
+const OPP_KW = ['守護', '威圧', 'オーラ', '指定攻撃'];
+const kwFromText = text => OPP_KW.filter(k => new RegExp(`^(?:【[^】]+】)*【${k}】`, 'm').test(z2h(text)));
+function addOpp(o){
+  if (S.oppF.length >= 5){ log('相手の場がいっぱい（5体）'); return null; }
+  const x = {u: uidSeq++, name: o.name, atk: Math.max(0, +o.atk || 0), def: Math.max(1, +o.def || 1), dmg: 0, rest: !!o.rest, kw: o.kw || []};
+  S.oppF.push(x); log(`相手の場に出した：${x.name} ${x.atk}/${x.def}${x.rest ? '（アクト）' : ''}`);
+  return x;
+}
+function oppDestroy(o){
+  const i = S.oppF.indexOf(o); if (i < 0) return;
+  S.oppF.splice(i, 1); S.oppGraveN++; log(`相手の${o.name}を破壊した`);
+  if (o.ru != null){ S._gone = S._gone || {}; if (!S._gone[o.ru]) S._gone[o.ru] = 'destroy'; return; }
+  if (S.O && o.inst) S.O.grave.push(o.inst);
+  else (S.oppGraveManual = S.oppGraveManual || []).push({name: o.name, atk: o.atk, def: o.def, type: 'フォロワー', cost: '', text: ''});
+  if (sel === o.u) sel = null;
+}
+function oppDamage(o, n){
+  o.dmg = (o.dmg || 0) + n; log(`相手の${o.name}に${n}ダメージ（残り体力${oppHp(o)}）`);
+  if (oppHp(o) <= 0){ if (o.ru != null) (S._gone = S._gone || {})[o.ru] = 'dmg:' + o.dmg; oppDestroy(o); }
+}
+async function myDamage(c, n){
+  if (n > 0 && c.shieldT === S.turn){ c.shieldT = null; log(`${dispName(c)}はダメージを受けなかった`); return; }
+  const red = z2h(baseOf(c).text).match(/自分のPP最大値が(\d+)以上である限り、これが受けるダメージを-(\d+)する/);
+  if (n > 0 && red && S.maxPP >= +red[1]){ n = Math.max(0, n - +red[2]); log(`${dispName(c)}の受けるダメージ-${red[2]}`); }
+  if (n > 0){ c.dmg = (c.dmg || 0) + n; log(`${dispName(c)}は${n}ダメージ（残り体力${myHp(c)}）`); }
+  if (myHp(c) <= 0 && find(c.u)){ const b = baseOf(c); move(c.u, 'grave'); log(`${b.name}は破壊された`); await trigger(b, 'ラストワード', {self: c.u}); await onDie(b); }
+}
+/* 攻撃できるのはアクト状態の相手フォロワー（【指定攻撃】ならスタンドも）。【威圧】は攻撃できない。アクト状態の【守護】がいればそれを攻撃する */
+const guards = () => (S && S.oppF || []).filter(o => o.rest && oppHas(o, '守護'));
+function attackTargets(c){
+  const g = guards(); if (g.length) return g;
+  return S.oppF.filter(o => !oppHas(o, '威圧') && (o.rest || hasKw(c, '指定攻撃')));
+}
+function oppCardHTML(o){
+  return `<button type="button" class="card t-opp ${o.rest ? 'rested' : ''} ${sel === o.u ? 'sel' : ''}" data-ou="${o.u}">
+    <span class="row1"><span class="cname">${esc(o.name)}</span></span>
+    <span class="cfoot"><span class="atk">${o.atk}</span><span>${(o.kw || []).map(k => `<span class="badge">${esc(k)}</span>`).join('')}</span><span class="def">${oppHp(o)}</span></span>
+  </button>`;
+}
+function oppDetailHTML(o){
+  const B = (a, l, cls = '') => `<button type="button" class="${cls}" data-oact="${a}" data-ou2="${o.u}">${l}</button>`;
+  return `<div class="dhead"><h2>選択中・相手の場</h2><button type="button" class="closesel" data-closesel="1">閉じる</button></div>
+    <div class="dname">${esc(o.name)}</div>
+    <div class="dmeta"><span>攻撃 ${o.atk} / 体力 ${oppHp(o)}（元の体力 ${o.def}）</span><span class="badge">${o.rest ? 'アクト' : 'スタンド'}</span>${o.evo ? '<span class="badge evo">進化</span>' : ''}${o.lb ? `<span class="badge evo">${o.lb === 2 ? '最終上限解放' : '上限解放'}</span>` : ''}</div>
+    ${o.text ? `<div class="dtext">${esc(o.text)}</div>` : ''}
+    <div class="adj">ダメージ ${B('dmg-', '−')}<span>${o.dmg || 0}</span>${B('dmg+', '＋')} 攻撃 ${B('atk-', '−')}<span>${o.atk}</span>${B('atk+', '＋')}</div>
+    <div class="adj">キーワード ${OPP_KW.map(k => B('kw:' + k, (oppHas(o, k) ? '✓' : '') + k)).join('')}</div>
+    <div class="actions">${B('rest', o.rest ? 'スタンドにする' : 'アクトにする', 'primary')}${B('destroy', '破壊', 'danger')}${B('remove', '場から戻す')}</div>
+    <p class="fmt" style="margin:0">自分のフォロワーが攻撃できるのは、アクト状態の相手フォロワーだけ。</p>`;
+}
+function openOppGrave(){
+  modalZone = null;
+  const list = S.pvp ? [...(S.oppGraveRemote || [])].sort((a, b) => (Number(a.cost) || 0) - (Number(b.cost) || 0)) : S.O ? [...S.O.grave].sort(byCostInst).map(c => D(c)) : (S.oppGraveManual || []);
+  $('mTitle').textContent = `相手の墓場（${list.length}枚・コスト順）`;
+  $('mBody').innerHTML = list.length ? list.map(d => `<div class="mrow"><div><div class="nm">${esc(d.name)} <span class="badge">${esc(d.type || '')} ${esc(d.cost === '' || d.cost == null ? '-' : d.cost)}</span>${d.atk != null ? ` <span class="badge">${d.atk}/${d.def}</span>` : ''}</div>${d.text ? `<div class="tx">${esc(d.text)}</div>` : ''}</div></div>`).join('') : '<p class="fmt">カードなし</p>';
+  $('overlay').hidden = false;
+}
+function openOppAdd(){
+  modalZone = null;
+  $('mTitle').textContent = '相手の場にフォロワーを出す';
+  const pool = LIB.filter(c => !c.evo && TYPE(c.type) === 'follower').sort(byCost);
+  $('mBody').innerHTML = `<div class="oppform">
+      <label>名前 <input id="oName" type="text" value="相手のフォロワー"></label>
+      <label>攻撃 <input id="oAtk" type="number" value="2" min="0"></label>
+      <label>体力 <input id="oDef" type="number" value="2" min="1"></label>
+      ${OPP_KW.map(k => `<label><input type="checkbox" data-okw="${k}"> ${k}</label>`).join('')}
+      <label><input type="checkbox" id="oRest" checked> アクト状態で出す</label>
+      <button type="button" class="primary" data-oaddform="1">出す</button>
+    </div>
+    <p class="fmt" style="margin:0">相手のターンに攻撃したフォロワーはアクト状態になる。下のカードプールから選んで出すこともできる（守護などはテキストから読む）。</p>`
+    + pool.map(c => `<div class="mrow"><div><div class="nm">${esc(c.name)} <span class="badge">${c.atk}/${c.def}</span></div>${c.text ? `<div class="tx">${esc(c.text)}</div>` : ''}</div><div class="actions"><button type="button" data-oaddlib="${esc(keyOf(c))}">出す</button></div></div>`).join('');
+  $('overlay').hidden = false;
+}
+
+/* ---------- CPU（成績で少しずつ調整する） ---------- */
+let CPUMEM = {};
+const recordedGames = new Set();
+function cpuMem(id){ CPUMEM[id] = CPUMEM[id] || {games: 0, wins: 0, aggro: 0.8, w: {}}; return CPUMEM[id]; }
+function headKws(text){
+  const out = [];
+  for (const l of z2h(text).split('\n')){
+    const h = l.trim().match(/^((?:【[^】]+】)+)/); if (!h) continue;
+    for (const t of h[1].match(/【[^】]+】/g)){ const n = t.slice(1, -1); if (TRIGGER_TAGS.includes(n)) break; out.push(n); }
+  }
+  return out;
+}
+function checkEnd(){
+  if (!S) return false;
+  if (S.over) return true;
+  let r = null;
+  if (S.opp <= 0) r = 'win'; else if (S.life <= 0) r = 'lose';
+  if (!r) return false;
+  S.over = r;
+  log(r === 'win' ? '相手のライフが0になった。勝ち' : '自分のライフが0になった。負け');
+  if (S.O && !recordedGames.has(S.gid)){ recordedGames.add(S.gid); recordCpu(r); }
+  return true;
+}
+function recordCpu(r){
+  const O = S.O, mem = cpuMem(O.deckId), won = r === 'lose';
+  mem.games++; if (won) mem.wins++;
+  O.played.forEach(n => { mem.w[n] = Math.max(-2, Math.min(3, (mem.w[n] || 0) + (won ? 0.3 : -0.15))); });
+  const diff = O.aggro - mem.aggro;
+  mem.aggro = Math.max(0.2, Math.min(1.6, mem.aggro + (won ? diff * 0.5 : -diff * 0.3)));
+  LS.set('evolveSolo.cpu', CPUMEM); cloudSave();
+  log(`CPUの記録：${mem.games}戦${mem.wins}勝、攻撃性 ${mem.aggro.toFixed(2)}`);
+}
+function cpuDraw(n){
+  const O = S.O;
+  for (let i = 0; i < n; i++){
+    if (!O.deck.length){ log('相手の山札が0枚。ドローできない'); S.opp = Math.min(S.opp, 0); return; }
+    O.hand.push(O.deck.shift());
+  }
+  log(`相手は${n}枚引いた（手札${O.hand.length}枚）`);
+}
+function cpuPlace(c, d){
+  const o = {u: c.u, d: c.d, inst: c, name: d.name, atk: d.atk || 0, def: d.def || 1, dmg: 0, rest: false, kw: headKws(d.text), ent: S.O.turn, evoT: null, text: d.text};
+  S.oppF.push(o); return o;
+}
+/* CPUの効果処理：1文ずつ読んで、条件（墓場の枚数・自分の場にいるか）とコスト（「〜：」の左側）も見る */
+const oDef = o => o.d != null ? S.defs[o.evo ?? o.d] : {name: o.name, type: 'フォロワー', cls: '', text: ''};
+const cpuGraveCount = x => { const f = makeFilter(x); return S.O.grave.filter(c => f(D(c))).length; };
+function cpuPickMine(n){
+  const fs = S.field.filter(c => TYPE(baseOf(c).type) === 'follower'); if (!fs.length) return null;
+  const kill = fs.filter(c => n == null || myHp(c) <= n).sort((a, b) => (atkOf(b) || 0) - (atkOf(a) || 0));
+  return kill[0] || fs.sort((a, b) => (atkOf(b) || 0) - (atkOf(a) || 0))[0];
+}
+/* CPUがコストを払えるなら払う。払えなければ false（能力は使わない） */
+function cpuPayCost(cost, d, self){
+  const O = S.O; let m;
+  if ((m = cost.match(/^(?:元のコスト(\d+)以下の)?場の(?:他の)?(.+?)1体を墓場に置く$/))){
+    const max = m[1] ? +m[1] : 99, f = makeFilter(m[2], d);
+    const cands = S.oppF.filter(o => o !== self && f(oDef(o)) && (Number(oDef(o).cost) || 0) <= max).sort((a, b) => (a.atk + oppHp(a)) - (b.atk + oppHp(b)));
+    if (!cands.length) return false;
+    const o = cands[0]; log(`相手はコストとして${o.name}を墓場に置いた`); oppDestroy(o); return true;
+  }
+  if ((m = cost.match(/^手札の(.+?)(\d+)枚を捨てる$/))){
+    const f = makeFilter(m[1], d), cands = O.hand.filter(c => f(D(c))).sort((a, b) => (Number(D(a).cost) || 0) - (Number(D(b).cost) || 0));
+    if (cands.length < +m[2]) return false;
+    cands.slice(0, +m[2]).forEach(c => { O.hand.splice(O.hand.indexOf(c), 1); O.grave.push(c); log(`相手は手札から${D(c).name}を捨てた`); });
+    return true;
+  }
+  if ((m = cost.match(/^手札の(.+?)(\d+)枚を公開$/))){
+    const f = makeFilter(m[1], d); if (O.hand.filter(c => f(D(c))).length < +m[2]) return false;
+    log(`相手は手札の${m[1]}${m[2]}枚を公開した`); return true;
+  }
+  if ((m = cost.match(/^\[(\d+)\]$/))){ if (O.pp < +m[1]) return false; O.pp -= +m[1]; return true; }
+  if (/^これを【?アクト】?(?:する)?$/.test(cost)){ if (!self || self.rest) return false; self.rest = true; return true; }
+  return false;
+}
+async function cpuSegment(seg, d, self){
+  seg = z2h(seg).trim(); if (!seg || /チョイス/.test(seg)) return;
+  const ci = seg.indexOf('：'), st = seg.indexOf('。');
+  if (ci > 0 && (st < 0 || ci < st) && !/^これをプレイする際、/.test(seg)){
+    const rest = seg.slice(ci + 1);
+    // 自分の場にフォロワーがいないのに、こちらのフォロワーを狙う能力のためにコストは払わない
+    if (/相手の(?:場の)?フォロワー/.test(rest) && !/リーダー/.test(rest) && !S.field.length) return;
+    if (!cpuPayCost(seg.slice(0, ci), d, self)){ log(`相手の${d.name}：コストを払えないので能力は使わない`); return; }
+    seg = rest.trim();
+  }
+  const sents = seg.split(/(?<=。)/).map(s => s.trim()).filter(Boolean);
+  let pick = null, condX = null, condOk = null;
+  for (let s of sents){
+    let m;
+    s = s.replace(/（[^）]*）/g, '').trim(); if (!s) continue;
+    if (/^これをプレイする際、/.test(s) || /^この能力は/.test(s)) continue;
+    if ((m = s.match(/^(.*?)自分の墓場の(.+?)が(\d+)枚以上なら、(.+)$/))){ condX = m[2]; condOk = cpuGraveCount(m[2]) >= +m[3]; if (!condOk) continue; s = m[1] + m[4]; }
+    else if ((m = s.match(/^(\d+)枚以上なら、(.+)$/)) && condX){ condOk = cpuGraveCount(condX) >= +m[1]; if (!condOk) continue; s = m[2]; }
+    else if ((m = s.match(/^(.*?)自分の場に(.+?)がいるなら、(.+)$/))){ const f = makeFilter(m[2], d); condX = null; condOk = S.oppF.some(o => o !== self && f(oDef(o))); if (!condOk) continue; s = m[1] + m[3]; }
+    else if (condOk === false) continue;
+    s = s.replace(/。$/, '');
+    if ((m = s.match(/^(?:カードを)?(\d+)枚引く$/))) cpuDraw(+m[1]);
+    else if ((m = s.match(/^相手のリーダー(?:すべて)?に(\d+)ダメージ(?:を与える)?$/))){ S.life -= +m[1]; log(`相手の効果で自分のライフ−${m[1]} → ${S.life}`); }
+    else if ((m = s.match(/^相手の場のフォロワー(?:すべて|全て)に(\d+)ダメージ(?:を与える)?$/))){ for (const c of [...S.field]) await myDamage(c, +m[1]); }
+    else if ((m = s.match(/^(?:元のコスト(\d+)(以下)?の)?相手の(リーダー1人か相手の)?(?:場の)?(?:フォロワー|カード)1(?:体|枚)(?:まで)?を選ぶ$/))) pick = {orLeader: !!m[3]};
+    else if ((m = s.match(/^それのリーダーに(\d+)ダメージ$/)) && pick){ S.life -= +m[1]; log(`相手の効果で自分のライフ−${m[1]} → ${S.life}`); }
+    else if ((m = s.match(/^それに(\d+)ダメージ(?:を与える)?$/)) && pick){
+      const n = +m[1], t = cpuPickMine(n);
+      if (t && (!pick.orLeader || myHp(t) <= n)){ log(`相手の効果で${dispName(t)}に${n}ダメージ`); await myDamage(t, n); }
+      else if (pick.orLeader){ S.life -= n; log(`相手の効果で自分のライフ−${n} → ${S.life}`); }
+      else if (t){ log(`相手の効果で${dispName(t)}に${n}ダメージ`); await myDamage(t, n); }
+    }
+    else if (/^それを破壊する$/.test(s) && pick){
+      const t = cpuPickMine(null);
+      if (t){ const b = baseOf(t); move(t.u, 'grave'); log(`相手の効果で${b.name}が破壊された`); await trigger(b, 'ラストワード', {self: t.u}); }
+    }
+    else if ((m = s.match(/^(?:自分の)?リーダーを(\d+)回復(?:する)?$/)) || (m = s.match(/^自分のリーダーは［体力］\+(\d+)する$/))){ S.opp += +m[1]; log(`相手のライフ+${m[1]} → ${S.opp}`); }
+    if (checkEnd()) return;
+  }
+}
+async function cpuEffect(d, kind, self){
+  const segs = kind === 'spell'
+    ? z2h(d.text).split('\n').filter(l => l.trim() && !/^【/.test(l.trim()))
+    : segmentsOf(d, kind);
+  for (const seg of segs){ await cpuSegment(seg, d, self); if (S.over) return; }
+}
+/* 追加コスト「場の〜N体をアクトする」を払えるか（払うときは攻撃力の低い順にアクト） */
+function cpuExtra(d, pay){
+  const m = z2h(d.text).match(/これをプレイする際、追加コストとして(?:自分の)?場の(.+?)(\d+)体をアクトする/);
+  if (!m) return true;
+  const f = makeFilter(m[1], d), cands = S.oppF.filter(o => !o.rest && f(oDef(o))).sort((a, b) => a.atk - b.atk);
+  if (cands.length < +m[2]) return false;
+  if (pay) cands.slice(0, +m[2]).forEach(o => { o.rest = true; log(`相手は追加コストとして${o.name}をアクトした`); });
+  return true;
+}
+function cpuSpellUseful(d){
+  const t = z2h(d.text);
+  if (/枚引く|相手のリーダー[^。]*ダメージ|回復|［体力］\+/.test(t)) return true;
+  if (/相手の(?:場の)?フォロワー/.test(t)) return S.field.length > 0;
+  return false;
+}
+async function cpuPlays(){
+  const O = S.O, mem = cpuMem(O.deckId);
+  const score = d => (Number(d.cost) || 0) + (mem.w[d.name] || 0) + (TYPE(d.type) === 'follower' ? 0.5 : 0);
+  for (let n = 0; n < 10; n++){
+    const cands = O.hand.filter(c => {
+      const d = D(c), cost = Number(d.cost) || 0, t = TYPE(d.type);
+      if (cost > O.pp) return false;
+      const ban = z2h(d.text).match(/これは自分の場の(.+?)が(\d+)体以下なら、プレイできない/);
+      if (ban){ const bt = makeFilter(ban[1], d); if (S.oppF.filter(o => bt(oDef(o))).length <= +ban[2]) return false; }
+      if (t === 'follower') return S.oppF.length < 5;
+      if (!cpuExtra(d, false)) return false;
+      if (t === 'spell') return cpuSpellUseful(d);
+      return false;
+    }).sort((a, b) => score(D(b)) - score(D(a)));
+    if (!cands.length) break;
+    const c = cands[0], d = D(c), cost = Number(d.cost) || 0;
+    O.hand.splice(O.hand.indexOf(c), 1); O.pp -= cost; cpuExtra(d, true);
+    if (!O.played.includes(d.name)) O.played.push(d.name);
+    if (TYPE(d.type) === 'spell'){ O.grave.push(c); log(`相手は${d.name}をプレイ（PP−${cost}）`); await cpuEffect(d, 'spell'); }
+    else { const po = cpuPlace(c, d); log(`相手は${d.name}（${d.atk}/${d.def}）を出した（PP−${cost}）`); await cpuEffect(d, 'ファンファーレ', po); }
+    if (checkEnd()) return;
+  }
+}
+async function cpuEvolve(){
+  const O = S.O; let best = null;
+  for (const o of S.oppF){
+    if (o.evo != null || o.d == null) continue;
+    const base = S.defs[o.d], e = O.evo.find(x => D(x).name === base.name); if (!e) continue;
+    const cm = z2h(base.text).match(/【進化】\[(\d+)\]/) || z2h(base.text).match(/\[(\d+)\]：これは進化する/);
+    if (!cm) continue;
+    const N = +cm[1], pay = O.ep > 0 ? Math.max(0, N - 1) : N; if (pay > O.pp) continue;
+    const gain = (D(e).atk || 0) + (D(e).def || 0) - o.atk - oppHp(o);
+    if (!best || gain > best.gain) best = {o, e, N, pay, gain};
+  }
+  if (!best) return;
+  const {o, e, N, pay} = best, ed = D(e);
+  if (O.ep > 0 && N > 0) O.ep--; O.pp -= pay;
+  O.evo.splice(O.evo.indexOf(e), 1);
+  o.evo = e.d; o.name = ed.name; o.atk = ed.atk ?? o.atk; o.def = ed.def ?? o.def; o.kw = headKws(ed.text); o.evoT = O.turn; o.text = ed.text;
+  log(`相手は${S.defs[o.d].name}を進化させた（${o.atk}/${oppHp(o)}）`);
+  await cpuEffect(ed, '進化時', o);
+}
+async function cpuAttacks(){
+  const O = S.O;
+  const myGuards = () => S.field.filter(c => c.rest && hasKw(c, '守護'));
+  const canAtk = o => {
+    if (o.rest) return null;
+    const kws = o.kw || [];
+    if (o.ent < O.turn || kws.includes('疾走')) return 'both';
+    if (kws.includes('突進') || o.evoT === O.turn) return 'follower';
+    return null;
+  };
+  const attackers = [...S.oppF].sort((a, b) => b.atk - a.atk);
+  const faceDmg = attackers.filter(o => canAtk(o) === 'both').reduce((s, o) => s + o.atk, 0);
+  const lethal = !myGuards().length && faceDmg >= S.life;
+  for (const o of attackers){
+    if (!S.oppF.includes(o) || S.over) continue;
+    const mode = canAtk(o); if (!mode || o.atk <= 0) continue;
+    const g = myGuards();
+    const targets = (g.length ? g : S.field.filter(c => !hasKw(c, '威圧') && (c.rest || (o.kw || []).includes('指定攻撃'))))
+      .filter(c => TYPE(baseOf(c).type) === 'follower');
+    let choice = null, best = -Infinity;
+    if (mode === 'both' && !g.length){ best = lethal ? 1e9 : o.atk * O.aggro * (1 + (20 - S.life) / 20); choice = 'face'; }
+    for (const t of targets){
+      const kill = myHp(t) <= o.atk, survive = (atkOf(t) || 0) < oppHp(o);
+      const v = (kill ? (atkOf(t) || 0) + (defOf(t) || 0) : o.atk * 0.3) * (2 - O.aggro) * 0.8 + (survive ? 1.5 : -(o.atk + oppHp(o)) * 0.4);
+      if (v > best){ best = v; choice = t; }
+    }
+    if (!choice || (choice !== 'face' && best < 0.5)) continue;
+    o.rest = true;
+    if (choice === 'face'){
+      S.life -= o.atk; log(`相手の${o.name}がリーダーに攻撃。自分のライフ−${o.atk} → ${S.life}`);
+      if (checkEnd()) return;
+    } else {
+      const t = choice, back = atkOf(t) || 0;
+      log(`相手の${o.name}が${dispName(t)}に攻撃`);
+      await myDamage(t, o.atk); oppDamage(o, back);
+    }
+  }
+}
+async function cpuTurn(){
+  const O = S.O; if (!O || S.over) return;
+  O.turn++;
+  log(`―― 相手（${O.name}）のターン${O.turn} ――`);
+  S.cpuNow = true;
+  O.maxPP = Math.min(10, O.maxPP + 1); O.pp = O.maxPP;
+  S.oppF.forEach(o => { o.rest = false; });
+  if (!(O.turn === 1 && !S.first && S.skipDraw)){ cpuDraw(1); if (checkEnd()) return; }
+  await cpuPlays(); if (checkEnd()) return;
+  await cpuEvolve(); if (checkEnd()) return;
+  await cpuAttacks(); S.cpuNow = false; if (checkEnd()) return;
+  while (O.hand.length > 7){
+    const c = [...O.hand].sort(byCostInst)[0];
+    O.hand.splice(O.hand.indexOf(c), 1); O.grave.push(c);
+    log(`相手は手札の上限で${D(c).name}を捨てた`);
+  }
+  log(`―― 相手のターン終了（手札${O.hand.length}枚・山札${O.deck.length}枚） ――`);
+}
+
+/* ---------- auto abilities ---------- */
+const z2h = s => String(s || '').replace(/[０-９]/g, ch => String.fromCharCode(ch.charCodeAt(0) - 0xFEE0)).replace(/＋/g, '+').replace(/－/g, '-').replace(/／/g, '/').replace(/『/g, '「').replace(/』/g, '」');
+const autoOn = () => $('optAbil').checked;
+
+/* 選択ダイアログ */
+let promptResolve = null, promptItems = [];
+function ask({title, note = '', items, skip}){
+  render();
+  return new Promise(res => {
+    modalZone = null; promptResolve = res; promptItems = items;
+    $('mTitle').textContent = title;
+    $('mBody').innerHTML = (note ? `<p class="fmt" style="margin:0">${esc(note)}</p>` : '')
+      + (items.length ? items.map((it, i) => `<div class="mrow ${it.disabled ? 'dim' : ''}"><div><div class="nm">${esc(it.label)}</div>${it.sub ? `<div class="tx">${esc(it.sub)}</div>` : ''}</div><div class="actions"><button type="button" class="${it.primary ? 'primary' : ''}" data-pick="${i}" ${it.disabled ? 'disabled' : ''}>${esc(it.btn || '選ぶ')}</button></div></div>`).join('') : '<p class="fmt">選べるカードがない。</p>')
+      + (skip ? `<div class="actions" style="margin-top:8px"><button type="button" data-pick="-1">${esc(skip)}</button></div>` : '');
+    $('overlay').hidden = false;
+  });
+}
+function pickCards(cards, test, {title, note, skip = '選ばない', btn}){
+  return ask({title, note, skip, items: cards.map(c => { const d = D(c), ok = !test || test(d);
+    return {value: c.u, disabled: !ok, btn, label: `${d.name}（${d.type} ${d.cost === '' ? '-' : d.cost}${d.atk != null ? ` ${d.atk}/${d.def}` : ''}）`, sub: d.text}; })});
+}
+
+/* 「レヴィオン・フォロワー」「カード名に「X」を含む…」などの条件を判定する */
+function makeFilter(x, src){
+  x = String(x || '').trim();
+  let ex = null, names = null, inc = null, m, costMax = null, costEq = null;
+  x = x.replace(/^他の/, '');
+  if (x.includes('これと同名を除く')){ ex = src && src.name; x = x.replace(/「?これと同名を除く([^」]*)」?/, '$1'); }
+  if ((m = x.match(/^(?:元の)?コスト(\d+)(以下)?の/))){ if (m[2]) costMax = +m[1]; else costEq = +m[1]; x = x.slice(m[0].length).replace(/^他の/, ''); }
+  if ((m = x.match(/カード名に「([^「」]+)」を含む([^」]*)/))){ inc = m[1]; x = m[2]; }
+  else if (/「[^「」]+」/.test(x)){ names = [...x.matchAll(/「([^「」]+)」/g)].map(a => a[1]); x = ''; }
+  const mm = x.trim().match(/^(.*?)・?(カード|フォロワー|スペル|アミュレット)$/);
+  const tribe = mm ? mm[1] : '', kind = mm ? mm[2] : 'カード';
+  return d => {
+    if (ex && d.name === ex) return false;
+    const cn = Number(d.cost) || 0;
+    if (costMax != null && cn > costMax) return false;
+    if (costEq != null && cn !== costEq) return false;
+    if (names && !names.includes(d.name)) return false;
+    if (inc && !d.name.includes(inc)) return false;
+    if (tribe){
+      const ab = tribe.match(/^((?:【[^】]+】)+)能力を持つ$/);
+      const ok = ab ? z2h(d.text).includes(ab[1])
+        : CLASSES.includes(tribe) ? (d.cls === tribe || String(d.type).includes(tribe))
+        : ((String(d.type) + d.name).includes(tribe) || (/属性$/.test(tribe) && String(d.type).includes('全属性')));
+      if (!ok) return false;
+    }
+    const t = TYPE(d.type);
+    if (kind === 'フォロワー' && t !== 'follower') return false;
+    if (kind === 'スペル' && t !== 'spell') return false;
+    if (kind === 'アミュレット' && t !== 'amulet') return false;
+    return true;
+  };
+}
+const countGrave = x => { const f = makeFilter(x); return S.grave.filter(c => f(D(c))).length; };
+
+/* 文に分ける（「」の中の。では切らない） */
+function splitSents(seg){
+  const out = []; let cur = '', depth = 0;
+  for (const ch of seg){ cur += ch; if (ch === '「') depth++; else if (ch === '」') depth = Math.max(0, depth - 1); else if (ch === '。' && !depth){ out.push(cur.trim()); cur = ''; } }
+  if (cur.trim()) out.push(cur.trim());
+  return out.filter(Boolean);
+}
+/* 上限解放・最終上限解放 */
+const lbNow = () => S.lbT === S.turn ? (S.lbN || 0) : 0;
+const canFinal = c => /【最終上限解放可能】/.test(z2h(baseOf(c).text)) || /【最終上限解放可能】/.test(z2h(D(c).text));
+const canProgress = c => !(c.lb >= 2) && (!c.lb || canFinal(c));
+async function doLB(c, final){
+  if (S.lbT !== S.turn){ S.lbT = S.turn; S.lbN = 0; }
+  S.lbN++; c.lb = final ? 2 : 1;
+  log(`${dispName(c)}は${final ? '最終上限解放' : '上限解放'}した（このターン${S.lbN}回目）`);
+  await trigger(baseOf(c), final ? '最終上限解放' : '上限解放', {self: c.u});
+}
+async function resolveLB(ctx, mode){
+  ctx.lbPend = false;
+  const f = ctx.target != null && find(ctx.target); if (!f || f.z !== 'field'){ log('上限解放するフォロワーがいない'); return; }
+  const c = f.c; let done = false;
+  if (mode === 'element' && c.lb === 1 && canFinal(c)){ await doLB(c, true); done = true; }
+  else if (!c.lb){ await doLB(c, false); done = true; if (mode === 'hihi' && canFinal(c) && find(c.u)){ await doLB(c, true); } }
+  else log(`${dispName(c)}はこれ以上上限解放できない`);
+  const me = find(ctx.self);
+  if (done && me && me.z === 'ex' && /トレジャー/.test(D(me.c).type)){ S.ex.splice(me.i, 1); log(`${D(me.c).name}を${dispName(c)}の下に置いた`); }
+}
+/* 「これを自分の手札から公開したとき」 */
+async function onReveal(u){
+  if (!autoOn()) return;
+  const f = find(u); if (!f) return;
+  const d = D(f.c);
+  for (const l of z2h(d.text).split('\n')){
+    const m = l.match(/^これを自分の手札から公開したとき、(.+)$/);
+    if (m) await runSegment(m[1], `${d.name}（手札から公開したとき）`, d, {self: u});
+  }
+}
+/* 効果で得た能力（「【攻撃時】〜」など） */
+async function runGrants(c, kind){
+  if (!autoOn()) return;
+  for (const g of (c.grant || [])){
+    const m = z2h(g).match(new RegExp(`^【${kind}】(.+)$`));
+    if (m && find(c.u)) await runSegment(m[1], `${dispName(c)}の${kind}（得た能力）`, baseOf(c), {self: c.u});
+  }
+}
+/* サイコロ */
+async function rollDie(src){
+  const v = 1 + Math.floor(Math.random() * 6);
+  if (S.rollT !== S.turn){ S.rolls = []; S.rollT = S.turn; }
+  S.rolls.push(v); log(`🎲 サイコロ：${v}${src ? `（${src.name}）` : ''}`);
+  if (!autoOn()) return v;
+  for (const c of [...S.field]){
+    if (!find(c.u)) continue;
+    const b = baseOf(c);
+    for (const l of z2h(b.text).split('\n')){
+      const m = l.match(/^自分がサイコロをふったとき、(.+)$/);
+      if (m) await runSegment(m[1], `${b.name}（サイコロ${v}）`, b, {self: c.u, die: v});
+    }
+  }
+  return v;
+}
+/* 効果で進化する（コストもEPも使わない） */
+async function effectEvolve(u){
+  const f = find(u); if (!f || !['field', 'ex'].includes(f.z)) return;
+  if (f.c.evo){ log(`${dispName(f.c)}はもう進化してる`); return; }
+  const e = S.evo.find(x => D(x).name === D(f.c).name);
+  if (!e){ log(`「${D(f.c).name}」のエボルヴカードが未使用の中にないので進化できない`); return; }
+  S.evo.splice(S.evo.indexOf(e), 1); f.c.evo = e; f.c.evoT = S.turn;
+  log(`${D(f.c).name}は効果で進化した`);
+  await trigger(D(e), '進化時', {self: u});
+}
+/* アクト状態にする（「これがアクトしたとき」も動かす） */
+async function setRest(c){
+  if (!c || c.rest) return;
+  c.rest = true;
+  if (!autoOn() || !find(c.u)) return;
+  const b = baseOf(c);
+  for (const l of z2h(b.text).split('\n')){
+    const m = l.match(/^これがアクトしたとき、(.+)$/);
+    if (m) await runSegment(m[1], `${b.name}（アクトしたとき）`, b, {self: c.u});
+  }
+}
+/* 自分のターン中、いずれかのプレイヤーが手札を捨てたとき */
+async function onAnyDiscard(){
+  if (!autoOn() || !S || S.cpuNow) return;
+  for (const c of [...S.field]){
+    if (!find(c.u)) continue;
+    const b = baseOf(c);
+    for (const l of z2h(b.text).split('\n')){
+      const m = l.match(/^(?:自分のターン中、)?いずれかのプレイヤーが自身の手札1枚を捨てたとき、(.+)$/);
+      if (m) await runSegment(m[1], `${b.name}（手札が捨てられた）`, b, {self: c.u});
+    }
+  }
+}
+/* 相手に手札を捨てさせる */
+async function oppDiscard(n, random){
+  if (S.pvp){ log(`相手は手札を${random ? 'ランダムに' : ''}${n}枚捨てる`); netFlush(); netSend({t: 'ev', ev: [{t: 'discard', n, random}], logs: []}); return; }
+  if (!S.O){ log(`相手は手札を${random ? 'ランダムに' : ''}${n}枚捨てる（相手の手札は手動で処理）`); return; }
+  for (let i = 0; i < n && S.O.hand.length; i++){
+    const c = random ? S.O.hand[Math.floor(Math.random() * S.O.hand.length)] : [...S.O.hand].sort(byCostInst)[0];
+    S.O.hand.splice(S.O.hand.indexOf(c), 1); S.O.grave.push(c);
+    log(`相手は手札から${D(c).name}を捨てた${random ? '（ランダム）' : ''}`);
+    await onAnyDiscard();
+  }
+}
+function makeToken(name){
+  const c = LIB.find(x => x.name === name && !x.evo);
+  if (!c){ log(`「${name}」がカードプールにない。トークンとして取り込んでおいて`); return null; }
+  const i = S.defs.push({...c, evo: false}) - 1;
+  return inst(i);
+}
+/* 「自分のターン中、自分の〜が場から墓場に置かれたとき」 */
+async function onDie(def){
+  if (!autoOn() || !S || S.cpuNow) return;
+  for (const c of [...S.field]){
+    if (!find(c.u)) continue;
+    const b = baseOf(c);
+    for (const l of z2h(b.text).split('\n')){
+      const m = l.match(/^(?:自分のターン中、)?自分の(.+?)が場から墓場に置かれたとき、(.+)$/);
+      if (m && makeFilter(m[1], b)(def)) await runSegment(m[2], `${b.name}（${def.name}が墓場へ）`, b, {self: c.u});
+    }
+  }
+}
+async function discard(u, by){
+  const f = find(u); if (!f) return;
+  const d = D(f.c);
+  move(u, 'grave'); log(`手札から捨てた：${d.name}`);
+  await onAnyDiscard();
+  await trigger(d, '手札から捨てたとき', {self: u});
+  if (by && autoOn()) for (const l of z2h(d.text).split('\n')){
+    const m = l.match(/^自分の(.+?)の能力によってこれを自分の手札から捨てたとき、(.+)$/);
+    if (m && makeFilter(m[1])(by)) await runSegment(m[2], `${d.name}（${by.name}の能力で捨てた）`, d, {self: u});
+  }
+}
+/* 効果で場に出す。ファンファーレも働く（「働かない」と書いてあるときだけ止める） */
+async function putOnField(u, noFF, from){
+  const f = find(u); if (!f) return false;
+  if (S.field.length >= 5){ log('場がいっぱいで出せない'); return false; }
+  const d = D(f.c);
+  move(u, 'field'); log(`${from || ''}場に出した：${d.name}`);
+  if (noFF) log(`${d.name}のファンファーレは働かない`);
+  else await trigger(d, 'ファンファーレ', {self: u});
+  await onEnter(u);
+  return true;
+}
+
+/* 「〜：」の左側のコスト */
+function canPay(cost, src, ctx){
+  let m;
+  if (/^手札のこれを捨てる$/.test(cost)){ const f = find(ctx.self); return !!f && f.z === 'hand'; }
+  if ((m = cost.match(/^場の(.+?)(\d+)体を【?アクト】?$/))){ const t = makeFilter(m[1], src); return S.field.filter(c => c.u !== ctx.self && !c.rest && t(baseOf(c))).length >= +m[2]; }
+  if ((m = cost.match(/^手札(\d+)枚を捨てる$/))) return S.hand.filter(c => c.u !== ctx.self).length >= +m[1];
+  if (/^これを墓場に置く$/.test(cost)) return !!find(ctx.self);
+  if ((m = cost.match(/^場の(.+?)を元のコストの合計が(\d+)以上になるように好きな枚数【?アクト】?$/))){ const t = makeFilter(m[1], src); return S.field.filter(c => c.u !== ctx.self && !c.rest && t(baseOf(c))).reduce((a, c) => a + (Number(D(c).cost) || 0), 0) >= +m[2]; }
+  if ((m = cost.match(/^手札の(.+?)(\d+)枚を(?:捨てる|公開)$/))){ const t = makeFilter(m[1], src); return S.hand.filter(c => c.u !== ctx.self && t(D(c))).length >= +m[2]; }
+  if ((m = cost.match(/^(?:自分の)?墓場の(.+?)(\d+)枚を消滅$/))){ return countGrave(m[1]) >= +m[2]; }
+  if ((m = cost.match(/^(?:元のコスト(\d+)以下の)?場の(他の)?(.+?)(\d+)(?:体|枚)を墓場に置く$/))){ const f = makeFilter(m[3], src), max = m[1] ? +m[1] : 99; return S.field.filter(c => (!m[2] || c.u !== ctx.self) && f(D(c)) && (Number(D(c).cost) || 0) <= max).length >= +m[4]; }
+  if (/^これを【?アクト】?(?:する)?$/.test(cost)){ const f = find(ctx.self); return !!f && !f.c.rest; }
+  if ((m = cost.match(/^\[(\d+)\]$/))) return S.pp >= +m[1];
+  return true;
+}
+async function payCost(cost, src, ctx){
+  let m;
+  if (/^手札のこれを捨てる$/.test(cost)){
+    const f = find(ctx.self); if (!f || f.z !== 'hand') return false;
+    await discard(ctx.self, src); return true;
+  }
+  if ((m = cost.match(/^場の(.+?)(\d+)体を【?アクト】?$/))){
+    const test = makeFilter(m[1], src), n = +m[2];
+    let cands = S.field.filter(c => c.u !== ctx.self && !c.rest && test(baseOf(c)));
+    if (cands.length < n){ log(`アクトできる${m[1]}が足りない`); return false; }
+    for (let i = 0; i < n; i++){
+      const u = await pickCards(cands, null, {title: `${src.name}：アクトする${m[1]}（${i + 1}/${n}）`, skip: 'やめる', btn: 'アクトする'});
+      if (u == null) return false;
+      const c = find(u).c; log(`${dispName(c)}をアクト`); await setRest(c);
+      cands = cands.filter(x => x.u !== u);
+    }
+    return true;
+  }
+  // 「これを【アクト】・墓場の〜を消滅」のような複合コストは、全部払えるか先に確かめる
+  const parts = cost.split(/・(?=(?:これを|手札の|墓場の|自分の墓場|場の|元のコスト|\[))/);
+  if (parts.length > 1){
+    for (const pt of parts) if (!canPay(pt, src, ctx)){ log(`コストを払えない：${pt}`); return false; }
+    for (const pt of parts) if (!(await payCost(pt, src, ctx))) return false;
+    return true;
+  }
+  if ((m = cost.match(/^(?:自分の)?墓場の(.+?)(\d+)枚を消滅$/))){
+    const n = +m[2], test = makeFilter(m[1], src);
+    if (countGrave(m[1]) < n){ log(`消滅できる${m[1]}が墓場に足りない`); return false; }
+    for (let i = 0; i < n; i++){
+      const u = await pickCards(S.grave.filter(c => test(D(c))).sort(byCostInst), null, {title: `${src.name}：墓場の${m[1]}を消滅（${i + 1}/${n}）`, skip: 'やめる', btn: '消滅'});
+      if (u == null) return false;
+      move(u, 'banish'); log(`墓場から消滅：${D(find(u).c).name}`);
+    }
+    return true;
+  }
+  if ((m = cost.match(/^手札(\d+)枚を捨てる$/))) cost = `手札のカード${m[1]}枚を捨てる`;
+  if (/^これを墓場に置く$/.test(cost)){
+    const f = find(ctx.self); if (!f) return false;
+    const b = baseOf(f.c); move(ctx.self, 'grave'); log(`${b.name}を墓場に置いた`);
+    await trigger(b, 'ラストワード', {self: ctx.self}); if (TYPE(b.type) === 'follower') await onDie(b);
+    return true;
+  }
+  if ((m = cost.match(/^場の(.+?)を元のコストの合計が(\d+)以上になるように好きな枚数【?アクト】?$/))){
+    const test = makeFilter(m[1], src), need = +m[2]; let sum = 0;
+    let cands = S.field.filter(c => c.u !== ctx.self && !c.rest && test(baseOf(c)));
+    while (sum < need){
+      const u = await pickCards(cands, null, {title: `${src.name}：アクトする${m[1]}を選ぶ`, note: `元のコストの合計が${need}以上（今${sum}）`, skip: 'やめる', btn: 'アクトする'});
+      if (u == null) return false;
+      const c = find(u).c; sum += Number(D(c).cost) || 0; log(`${dispName(c)}をアクト`); await setRest(c);
+      cands = cands.filter(x => x.u !== u);
+    }
+    return true;
+  }
+  if ((m = cost.match(/^手札の(.+?)(\d+)枚を捨てる$/))){
+    const n = +m[2], test = makeFilter(m[1], src);
+    if (S.hand.filter(c => c.u !== ctx.self && test(D(c))).length < n){ log(`捨てられる${m[1]}が足りない`); return false; }
+    for (let i = 0; i < n; i++){
+      const u = await pickCards(S.hand.filter(c => c.u !== ctx.self), test, {title: `${src.name}：${m[1]}を捨てる（${i + 1}/${n}）`, note: '捨てるとこの能力が使える。', skip: '捨てない（能力を使わない）', btn: '捨てる'});
+      if (u == null) return false;
+      await discard(u, typeof src !== 'undefined' ? src : null);
+    }
+    return true;
+  }
+  if ((m = cost.match(/^手札の(.+?)(\d+)枚を公開$/))){
+    const n = +m[2], test = makeFilter(m[1], src);
+    const have = S.hand.filter(c => c.u !== ctx.self && test(D(c)));
+    if (have.length < n){ log(`公開できる${m[1]}が足りない（${have.length}/${n}）`); return false; }
+    const chosen = [];
+    for (let i = 0; i < n; i++){
+      const u = await pickCards(have.filter(c => !chosen.includes(c.u)), null, {title: `${src.name}：公開する${m[1]}（${i + 1}/${n}）`, skip: '使わない', btn: '公開する'});
+      if (u == null) return false;
+      chosen.push(u);
+    }
+    log(`公開：${chosen.map(u => D(find(u).c).name).join('、')}`);
+    for (const u of chosen) await onReveal(u);
+    return true;
+  }
+  if ((m = cost.match(/^(?:元のコスト(\d+)以下の)?場の(他の)?(.+?)(\d+)(?:体|枚)を墓場に置く$/))){
+    const max = m[1] ? +m[1] : 99, f = makeFilter(m[3], src), test = d => f(d) && (Number(d.cost) || 0) <= max, n = +m[4];
+    let cands = S.field.filter(c => (!m[2] || c.u !== ctx.self) && test(D(c)));
+    if (cands.length < n){ log(`墓場に置ける${m[3]}が場に足りない`); return false; }
+    for (let i = 0; i < n; i++){
+      const u = await pickCards(cands, null, {title: `${src.name}：場の${m[3]}を墓場に置く（${i + 1}/${n}）`, note: m[1] ? `元のコスト${m[1]}以下` : '', skip: 'やめる', btn: '墓場に置く'});
+      if (u == null) return false;
+      const c = find(u).c, b = baseOf(c);
+      move(u, 'grave'); log(`${b.name}を墓場に置いた`);
+      await trigger(b, 'ラストワード', {self: u});
+      if (TYPE(b.type) === 'follower') await onDie(b);
+      cands = cands.filter(x => x.u !== u && find(x.u));
+    }
+    return true;
+  }
+  if (/^これを【?アクト】?(?:する)?$/.test(cost)){
+    const f = find(ctx.self); if (!f) return false;
+    if (f.c.rest){ log(`${dispName(f.c)}はもうアクト状態なので使えない`); return false; }
+    log(`${dispName(f.c)}をアクト`); await setRest(f.c); return true;
+  }
+  if ((m = cost.match(/^\[(\d+)\]$/))){
+    const n = +m[1];
+    if (n === 0) return true;
+    if (S.pp < n){ log(`⚠ ${src.name}：PPが足りないのでこの能力は使えない（PP${n}必要、残り${S.pp}）`); return false; }
+    const r = await ask({title: `${src.name}：PPを${n}払って使う？`, note: `残りPP ${S.pp}`, items: [{label: `PPを${n}払う`, value: 'y', btn: '払う', primary: true}], skip: '使わない'});
+    if (!r) return false;
+    S.pp -= n; log(`PP−${n}`); return true;
+  }
+  const r = await ask({title: `${src.name}：コストを払う？`, note: cost, items: [{label: '払って能力を使う（コストは自分で処理）', value: 'y', btn: '払う', primary: true}], skip: '使わない'});
+  return !!r;
+}
+
+async function search(x, n, dest, src, noFF){
+  const test = makeFilter(x, src);
+  for (let i = 0; i < n; i++){
+    const cands = S.deck.filter(c => test(D(c))).sort(byCostInst);
+    if (!cands.length){ log(`山札に${x}がない`); break; }
+    const u = await pickCards(cands, null, {title: `${src.name}：山札から${x}を探す`, note: dest === '場に出す' ? '選んだカードを場に出す' : '選んだカードを手札に加える', skip: '探さない', btn: dest === '場に出す' ? '場に出す' : '手札に加える'});
+    if (u == null) break;
+    const nm = D(find(u).c).name;
+    if (dest === '場に出す') await putOnField(u, noFF, '山札から');
+    else { move(u, 'hand'); log(`山札から手札へ：${nm}`); }
+  }
+  shuffle(S.deck); log('山札をシャッフル');
+}
+
+/* 1文ずつ処理する。処理できたら true */
+async function doSentence(s, src, ctx){
+  let m;
+  s = s.replace(/。$/, '');
+  if ((m = s.match(/^(?:カードを)?(\d+)枚引く$/))){ draw(+m[1]); return true; }
+  if ((m = s.match(/^(?:あなたの|自分の)?リーダーを(\d+)回復(?:する)?$/)) || (m = s.match(/^自分のリーダーは［体力］\+(\d+)する$/))){ S.life += +m[1]; ctx.lastHeal = +m[1]; log(`自分のライフ+${m[1]} → ${S.life}`); return true; }
+  if ((m = s.match(/^代わりに(?:自分のリーダーは)?［体力］\+(\d+)する$/))){ const add = +m[1] - (ctx.lastHeal || 0); S.life += add; log(`代わりに体力+${m[1]}（ライフ${S.life}）`); return true; }
+  if ((m = s.match(/^自分のPP最大値を\+(\d+)する$/))){ S.maxPP = Math.min(10, S.maxPP + +m[1]); log(`PP最大値+${m[1]} → ${S.maxPP}`); return true; }
+  if ((m = s.match(/^自分のデッキの上(\d+)枚を公開する$/))){
+    if (ctx.look && ctx.look.length) S.deck.unshift(...ctx.look);
+    ctx.look = S.deck.splice(0, +m[1]); ctx.revealed = [...ctx.look];
+    log(`山札の上${ctx.look.length}枚を公開：${ctx.look.map(c => D(c).name).join('、') || 'なし'}`); return true;
+  }
+  if ((m = s.match(/^それに「これによって公開した(.+?)の枚数」と同じダメージ$/))){
+    const t = makeFilter(m[1], src), n = (ctx.revealed || []).filter(c => t(D(c))).length;
+    log(`公開した${m[1]}は${n}枚`);
+    if (ctx.pick && ctx.pick.side === 'opp' && n > 0) for (const u of ctx.pick.us || [ctx.pick.u]){ const o = findOpp(u); if (o) oppDamage(o, n); }
+    return true;
+  }
+  if ((m = s.match(/^公開したカードの中から、(\d+)枚を手札に加える$/)) && ctx.look){
+    for (let k = 0; k < +m[1] && ctx.look.length; k++){
+      const u = await pickCards(ctx.look, null, {title: `${src.name}：手札に加えるカード`, skip: null, btn: '手札に加える'});
+      if (u == null) break;
+      const c = ctx.look.splice(ctx.look.findIndex(x => x.u === u), 1)[0]; S.hand.push(c); log(`手札へ：${D(c).name}`);
+    }
+    return true;
+  }
+  if ((m = s.match(/^その中から、?(.+?)(\d+)枚を場に出してよい$/)) && ctx.look){
+    if (S.field.length >= 5){ log('場がいっぱいで出せない'); return true; }
+    if (!ctx.look.some(c => makeFilter(m[1], src)(D(c)))){ log(`見た中に${m[1]}がなかったので、場に出せない`); return true; }
+    const u = await pickCards(ctx.look, makeFilter(m[1], src), {title: `${src.name}：${m[1]}を場に出す？`, note: '見たカード（上から順）。', skip: '出さない', btn: '場に出す'});
+    if (u != null){ const c = ctx.look.splice(ctx.look.findIndex(x => x.u === u), 1)[0]; S.ex.push(c); await putOnField(c.u, ctx.noFF, '山札から'); }
+    return true;
+  }
+  if (/^それは上限解放する$/.test(s)){ ctx.lbPend = true; return true; }
+  if (/^それが【最終上限解放可能】を持ち、上限解放していたなら、代わりに最終上限解放する$/.test(s)){ await resolveLB(ctx, 'element'); return true; }
+  if (/^それが【最終上限解放可能】を持つなら、さらにそれは最終上限解放する$/.test(s)){ await resolveLB(ctx, 'hihi'); return true; }
+  if ((m = s.match(/^これは「(.+)」を持つ$/))){
+    const f = find(ctx.self); if (!f || f.z !== 'field') return false;
+    f.c.grant = [...(f.c.grant || []), m[1]]; log(`${dispName(f.c)}は「${m[1]}」を得た`); return true;
+  }
+  if ((m = s.match(/^それとそれのリーダーに(\d+)ダメージ$/))){
+    if (!ctx.pick || ctx.pick.side !== 'opp') return true;
+    const o = findOpp(ctx.pick.u); if (o) oppDamage(o, +m[1]);
+    S.opp -= +m[1]; log(`相手のライフ−${m[1]} → ${S.opp}`); return true;
+  }
+  if (/^それを消滅させる$/.test(s)){
+    if (!ctx.pick || ctx.pick.side !== 'opp') return true;
+    for (const u of ctx.pick.us || [ctx.pick.u]){ const o = findOpp(u); if (!o) continue; S.oppF.splice(S.oppF.indexOf(o), 1); if (o.ru != null) (S._gone = S._gone || {})[o.ru] = 'banish'; log(`相手の${o.name}を消滅させた`); if (sel === o.u) sel = null; }
+    return true;
+  }
+  if ((m = s.match(/^そうしたなら、(.+)$/))){ if (!ctx.discarded) return true; return doSentence(m[1], src, ctx); }
+  if ((m = s.match(/^相手のリーダー(?:すべて)?に(\d+)ダメージ(?:を与える)?$/))){ S.opp -= +m[1]; log(`相手のライフ−${m[1]} → ${S.opp}`); return true; }
+  if ((m = s.match(/^自分のリーダーに(\d+)ダメージ$/))){ S.life -= +m[1]; log(`自分のライフ−${m[1]} → ${S.life}`); return true; }
+  if ((m = s.match(/^(?:自分の)?PPを(\d+)回復(?:する)?$/))){ S.pp = Math.min(S.maxPP, S.pp + +m[1]); log(`PP+${m[1]} → ${S.pp}/${S.maxPP}`); return true; }
+  if ((m = s.match(/^EPを(\d+)(?:回復|得る)(?:する)?$/))){ S.ep += +m[1]; log(`EP+${m[1]} → ${S.ep}`); return true; }
+  if ((m = s.match(/^自分の手札(\d+)枚を捨てる$/))){
+    for (let i = 0; i < +m[1] && S.hand.length; i++){
+      const u = await pickCards(S.hand, null, {title: `${src.name}：手札を1枚捨てる`, note: '必ず捨てる効果。', skip: null, btn: '捨てる'});
+      if (u == null) break;
+      await discard(u, typeof src !== 'undefined' ? src : null);
+    }
+    return true;
+  }
+  if ((m = s.match(/^(?:自分の)?手札の(.+?)(\d+)枚を捨ててよい$/))){
+    ctx.discarded = false;
+    const u = await pickCards(S.hand.filter(c => c.u !== ctx.self), makeFilter(m[1], src), {title: `${src.name}：${m[1]}を捨てる？`, skip: '捨てない', btn: '捨てる'});
+    if (u != null){ await discard(u, typeof src !== 'undefined' ? src : null); ctx.discarded = true; }
+    return true;
+  }
+  if (/^これをスタンドする$/.test(s)){
+    const f = find(ctx.self); if (!f) return false;
+    f.c.rest = false; log(`${dispName(f.c)}をスタンド`); return true;
+  }
+  // 手札や墓場から場に出す（「元のコストX以下の〜」にも対応）
+  if ((m = s.match(/^自分の(手札|墓場)の(?:(?:元の)?コスト(X|\d+)以下の)?(.+?)(\d+)枚を場に出(す|してよい)$/))){
+    const lim = m[2] === 'X' ? ctx.X : m[2] ? +m[2] : 99;
+    if (lim == null) return false;
+    const zone = m[1] === '手札' ? 'hand' : 'grave', test = makeFilter(m[3], src);
+    const cands = S[zone].filter(c => c.u !== ctx.self && test(D(c)) && (Number(D(c).cost) || 0) <= lim).sort(byCostInst);
+    if (!cands.length){ log(`${m[1]}に出せる${m[3]}がない${lim < 99 ? `（コスト${lim}以下）` : ''}`); return true; }
+    const u = await pickCards(cands, null, {title: `${src.name}：${m[1]}から場に出す`, note: `コスト${lim}以下`, skip: m[5] === 'してよい' ? '出さない' : null, btn: '場に出す'});
+    if (u != null) await putOnField(u, ctx.noFF, `${m[1]}から`);
+    return true;
+  }
+  // 相手のフォロワーやリーダーを選ぶ（「それに〜」「それを破壊する」の対象）
+  if ((m = s.match(/^(アクト状態の)?(?:元のコスト(\d+)(以下)?の)?相手の(リーダー1人か相手の)?(?:場の)?(?:フォロワー|カード)(\d+)(?:体|枚)(?:まで)?を?選ぶ$/))){
+    ctx.pick = null;
+    const actOnly = !!m[1], many = +m[5];
+    m = [m[0], m[2], m[3], m[4]];
+    const lim = m[1] == null ? null : +m[1], le = !!m[2];
+    const okCost = o => { if (lim == null) return true; const dd = o.d != null ? S.defs[o.d] : null; if (!dd) return true; const cn = Number(dd.cost) || 0; return le ? cn <= lim : cn === lim; };
+    const items = (m[3] ? [{label: `相手のリーダー（ライフ${S.opp}）`, value: 'L', btn: '選ぶ', primary: true}] : [])
+      .concat(S.oppF.filter(o => okCost(o) && (!actOnly || o.rest)).map(o => ({label: `${o.name} ${o.atk}/${oppHp(o)}${o.rest ? '（アクト）' : ''}`, value: o.u, btn: '選ぶ', primary: true})));
+    if (!items.length){ log(`選べる相手のフォロワーがいない${lim != null ? `（元のコスト${lim}${le ? '以下' : ''}）` : ''}`); return true; }
+    const us = [];
+    for (let k = 0; k < many; k++){
+      const left = items.filter(it => !us.includes(it.value));
+      if (!left.length) break;
+      const v = await ask({title: `${src.name}：${m[3] ? '相手のリーダーかフォロワー' : '相手のフォロワー'}を選ぶ${many > 1 ? `（${k + 1}/${many}）` : ''}`, note: (actOnly ? 'アクト状態のフォロワーだけ。' : '') + (lim != null ? `元のコスト${lim}${le ? '以下' : ''}（手動で置いた相手のフォロワーは、コストが分からないので全部出る）` : ''), items: left, skip: k ? 'これで決定' : '選ばない'});
+      if (v == null) break;
+      if (v === 'L'){ ctx.pick = {side: 'leader'}; log('選んだ：相手のリーダー'); return true; }
+      us.push(v); log(`選んだ：相手の${findOpp(v).name}`);
+    }
+    if (us.length) ctx.pick = {side: 'opp', u: us[0], us};
+    return true;
+  }
+  if ((m = s.match(/^それに(\d+)ダメージ(?:を与える)?$/))){
+    if (!ctx.pick) return true;
+    if (ctx.pick.side === 'leader'){ S.opp -= +m[1]; log(`相手のライフ−${m[1]} → ${S.opp}`); return true; }
+    for (const u of ctx.pick.us || [ctx.pick.u]){ const o = findOpp(u); if (o) oppDamage(o, +m[1]); }
+    return true;
+  }
+  if (/^それをアクトする$/.test(s)){
+    if (!ctx.pick || ctx.pick.side !== 'opp') return true;
+    for (const u of ctx.pick.us || [ctx.pick.u]){ const o = findOpp(u); if (o){ o.rest = true; log(`相手の${o.name}をアクト`); } }
+    return true;
+  }
+  if ((m = s.match(/^それのリーダーに(\d+)ダメージ$/))){
+    if (!ctx.pick) return true;
+    S.opp -= +m[1]; log(`相手のライフ−${m[1]} → ${S.opp}`); return true;
+  }
+  // 自分か相手の場のフォロワーを選ぶ
+  if ((m = s.match(/^場の(他の)?フォロワー1体を選ぶ$/))){
+    ctx.pick = null; ctx.target = null;
+    const mine = S.field.filter(c => (!m[1] || c.u !== ctx.self) && TYPE(baseOf(c).type) === 'follower');
+    const items = mine.map(c => ({label: `自分の${dispName(c)} ${atkOf(c)}/${myHp(c)}`, value: 'M' + c.u, btn: '選ぶ', primary: true}))
+      .concat(S.oppF.map(o => ({label: `相手の${o.name} ${o.atk}/${oppHp(o)}`, value: 'O' + o.u, btn: '選ぶ', primary: true})));
+    if (!items.length){ log('選べるフォロワーがいない'); return true; }
+    const v = await ask({title: `${src.name}：場の${m[1] || ''}フォロワーを選ぶ`, items, skip: '選ばない'});
+    if (v && v[0] === 'M'){ ctx.target = +v.slice(1); log(`選んだ：${dispName(find(ctx.target).c)}`); }
+    if (v && v[0] === 'O'){ ctx.pick = {side: 'opp', u: +v.slice(1)}; log(`選んだ：相手の${findOpp(ctx.pick.u).name}`); }
+    return true;
+  }
+  if ((m = s.match(/^自分の他のフォロワー(?:すべて|全て)に(\d+)ダメージ$/))){
+    for (const c of [...S.field]) if (c.u !== ctx.self && find(c.u)) await myDamage(c, +m[1]);
+    return true;
+  }
+  if ((m = s.match(/^自分の(?:場の)?他の(.+?)(?:すべて|全て)は［攻撃］([+-]\d+)\/［体力］([+-]\d+)する$/))){
+    const test = makeFilter(m[1], src);
+    S.field.filter(c => c.u !== ctx.self && test(baseOf(c))).forEach(c => { c.am += +m[2]; c.dm += +m[3]; });
+    log(`自分の他の${m[1]}すべては攻撃${m[2]}/体力${m[3]}`); return true;
+  }
+  if (/^このターン、これは次のダメージを受けない$/.test(s)){
+    const f = find(ctx.self); if (!f) return false;
+    f.c.shieldT = S.turn; log(`${dispName(f.c)}はこのターン、次のダメージを受けない`); return true;
+  }
+  if (/^サイコロをふる$/.test(s)){ await rollDie(src); return true; }
+  if (/^これは進化する$/.test(s)){ await effectEvolve(ctx.self); return true; }
+  if (/^これを操縦する$/.test(s)){
+    const f = find(ctx.self); if (!f) return false;
+    const pm = z2h(src.text).match(/［攻撃］(\d+)\/［体力］(\d+)のフォロワーにする/);
+    f.c.pilot = {t: S.turn, atk: pm ? +pm[1] : 0, def: pm ? +pm[2] : 1};
+    log(`${dispName(f.c)}を操縦した（このターン${f.c.pilot.atk}/${f.c.pilot.def}のフォロワー）`); return true;
+  }
+  if (/^これを墓場に置く$/.test(s)){
+    const f = find(ctx.self); if (!f) return true;
+    const b = baseOf(f.c); move(ctx.self, 'grave'); log(`${b.name}を墓場に置いた`);
+    await trigger(b, 'ラストワード', {self: ctx.self}); if (TYPE(b.type) === 'follower') await onDie(b);
+    return true;
+  }
+  if ((m = s.match(/^自分の墓場の(.+?)(\d+)枚を選ぶ$/))){
+    const test = makeFilter(m[1], src); ctx.gpick = [];
+    for (let k = 0; k < +m[2]; k++){
+      const cands = S.grave.filter(c => test(D(c)) && !ctx.gpick.includes(c.u)).sort(byCostInst);
+      if (!cands.length){ if (!k) log(`墓場に${m[1]}がない`); break; }
+      const u = await pickCards(cands, null, {title: `${src.name}：墓場の${m[1]}を選ぶ（${k + 1}/${m[2]}）`, skip: k ? 'これで決定' : '選ばない', btn: '選ぶ'});
+      if (u == null) break;
+      ctx.gpick.push(u); log(`選んだ：${D(find(u).c).name}`);
+    }
+    return true;
+  }
+  if ((m = s.match(/^それを(手札に加える|場に出す)$/)) && ctx.gpick){
+    for (const u of ctx.gpick){
+      if (m[1] === '手札に加える'){ move(u, 'hand'); log(`墓場から手札へ：${D(find(u).c).name}`); }
+      else await putOnField(u, ctx.noFF, '墓場から');
+    }
+    return true;
+  }
+  if ((m = s.match(/^それは「(.+)」を持つ$/)) && ctx.gpick){
+    for (const u of ctx.gpick){ const f = find(u); if (f && f.z === 'field'){ f.c.grant = [...(f.c.grant || []), m[1]]; log(`${dispName(f.c)}は「${m[1]}」を持つ`); } }
+    return true;
+  }
+  if ((m = s.match(/^相手プレイヤーすべては、自身の手札(?:を(ランダムに))?(\d+)枚(?:を)?捨てる$/))){ await oppDiscard(+m[2], !!m[1]); return true; }
+  if ((m = s.match(/^このターン、次に自分が(.+?)をプレイする際、コストを-(\d+)する$/))){
+    S.nextDisc = {t: S.turn, x: m[1], v: +m[2]}; log(`このターン、次に${m[1]}をプレイする際、コスト-${m[2]}`); return true;
+  }
+  // トークン：「X」N体を出す／「X」N枚をEXエリアに置く
+  if ((m = s.match(/^「([^「」]+)」(\d+)(?:体|枚|つ)を(場に出す|出す|EXエリアに置く)$/))){
+    for (let i = 0; i < +m[2]; i++){
+      const c = makeToken(m[1]); if (!c) return true;
+      if (m[3] === 'EXエリアに置く'){
+        if (S.ex.length >= 5){ log('EXエリアがいっぱいで置けない'); break; }
+        c.ent = S.turn; S.ex.push(c); log(`「${m[1]}」をEXエリアに置いた`);
+      } else {
+        if (S.field.length >= 5){ log('場がいっぱいで出せない'); break; }
+        S.ex.push(c); await putOnField(c.u, ctx.noFF, '');
+      }
+    }
+    return true;
+  }
+  if (/^それを破壊する$/.test(s)){
+    if (!ctx.pick || ctx.pick.side !== 'opp') return !!(ctx.pick === null);
+    for (const u of ctx.pick.us || [ctx.pick.u]){ const o = findOpp(u); if (o) oppDestroy(o); }
+    return true;
+  }
+  if ((m = s.match(/^相手の場のフォロワー(?:すべて|全て)に(\d+)ダメージ(?:を与える)?$/))){
+    for (const o of [...S.oppF]) oppDamage(o, +m[1]); return true;
+  }
+  if (/^このターン、これは交戦ダメージを受けない$/.test(s)){
+    const f = find(ctx.self); if (!f) return false;
+    f.c.noBattleDmg = S.turn; log(`${dispName(f.c)}はこのターン、交戦ダメージを受けない`); return true;
+  }
+  // 自分の場のフォロワーを選ぶ（「それは〜」の対象になる）
+  if ((m = s.match(/^自分の場の(他の)?(.+?)1体を選ぶ$/))){
+    const test = makeFilter(m[2], src);
+    const lbSel = /それは上限解放する/.test(z2h(src.text));
+    const cands = S.field.filter(c => (!m[1] || c.u !== ctx.self) && (test(baseOf(c)) || test(D(c))) && (!lbSel || canProgress(c)));
+    ctx.target = null;
+    if (!cands.length){ log(`選べる${m[1] || ''}${m[2]}が場にいない`); return true; }
+    const u = await pickCards(cands, null, {title: `${src.name}：自分の場の${m[1] || ''}${m[2]}を選ぶ`, skip: '選ばない', btn: '選ぶ'});
+    if (u != null){ ctx.target = u; log(`選んだ：${dispName(find(u).c)}`); }
+    return true;
+  }
+  if ((m = s.match(/^(これ|それ)は(?:［攻撃］([+-]\d+))?\/?(?:［体力］([+-]\d+))?する$/)) && (m[2] || m[3])){
+    const a = m[2] ? +m[2] : 0, h = m[3] ? +m[3] : 0, txt = `${m[2] ? `攻撃${m[2]}` : ''}${m[2] && m[3] ? '/' : ''}${m[3] ? `体力${m[3]}` : ''}`;
+    if (m[1] === 'それ' && ctx.target == null && ctx.pick && ctx.pick.side === 'opp'){
+      const o = findOpp(ctx.pick.u); if (!o) return true;
+      o.atk = Math.max(0, o.atk + a); log(`相手の${o.name}は${txt}`);
+      if (h > 0) o.def += h; else if (h < 0) oppDamage(o, -h);
+      return true;
+    }
+    const tu = m[1] === 'これ' ? ctx.self : ctx.target;
+    if (m[1] === 'それ' && tu == null) return true;
+    const f = find(tu); if (!f || !['field', 'ex'].includes(f.z)) return false;
+    f.c.am += a; f.c.dm += h;
+    log(`${dispName(f.c)}は${txt}`);
+    if (myHp(f.c) <= 0) await myDamage(f.c, 0);
+    return true;
+  }
+  if ((m = s.match(/^(これ|それ)は((?:【[^】]+】)+)を持つ$/))){
+    const tu = m[1] === 'これ' ? ctx.self : ctx.target;
+    if (m[1] === 'それ' && tu == null) return true;
+    const f = find(tu); if (!f || !['field', 'ex'].includes(f.z)) return false;
+    f.c.kw = [...new Set([...(f.c.kw || []), ...m[2].match(/【[^】]+】/g)])];
+    log(`${dispName(f.c)}は${m[2]}を得た`); return true;
+  }
+  if ((m = s.match(/^捨てたなら、(.+)$/))){ if (!ctx.discarded) return true; return doSentence(m[1], src, ctx); }
+  if ((m = s.match(/^自分のデッキの上(\d+)枚を見る$/))){
+    if (ctx.look && ctx.look.length) S.deck.unshift(...ctx.look);
+    ctx.look = S.deck.splice(0, +m[1]);
+    log(`山札の上${ctx.look.length}枚を見た：${ctx.look.map(c => D(c).name).join('、') || 'なし'}`);
+    return true;
+  }
+  if ((m = s.match(/^その中から、?(.+?)(\d+)枚(?:まで)?を?公開して手札に加えてよい$/)) && ctx.look){
+    for (let k = 0; k < +m[2]; k++){
+      const u = await pickCards(ctx.look, makeFilter(m[1], src), {title: `${src.name}：${m[1]}を手札に加える？（${k + 1}/${m[2]}）`, note: '見たカード（上から順）。条件に合うカードだけ選べる。', skip: k ? 'これで終わり' : '加えない', btn: '手札に加える'});
+      if (u == null) break;
+      const i = ctx.look.findIndex(c => c.u === u), c = ctx.look.splice(i, 1)[0]; S.hand.push(c); log(`公開して手札へ：${D(c).name}`);
+    }
+    return true;
+  }
+  if ((m = s.match(/^その中から、?(.+?)(?:を元のコストの合計が(\d+)以下になるように)?(\d+)枚(?:まで)?を?EXエリアに置いてよい$/)) && ctx.look){
+    const test = makeFilter(m[1], src), sumMax = m[2] ? +m[2] : null; let sum = 0; ctx.placed = [];
+    for (let k = 0; k < +m[3]; k++){
+      if (S.ex.length >= 5){ log('EXエリアがいっぱい'); break; }
+      const u = await pickCards(ctx.look, d => test(d) && (sumMax == null || sum + (Number(d.cost) || 0) <= sumMax), {title: `${src.name}：EXエリアに置く（${k + 1}/${m[3]}）`, note: sumMax != null ? `元のコストの合計が${sumMax}以下（今${sum}）` : '見たカード（上から順）。', skip: k ? 'これで終わり' : '置かない', btn: 'EXエリアに置く'});
+      if (u == null) break;
+      const i = ctx.look.findIndex(c => c.u === u), c = ctx.look.splice(i, 1)[0];
+      sum += Number(D(c).cost) || 0; c.ent = S.turn; S.ex.push(c); ctx.placed.push(c.u); log(`EXエリアに置いた：${D(c).name}`);
+    }
+    return true;
+  }
+  if ((m = s.match(/^このターン、それ(?:ら)?をプレイする際、コストを(0にする|-(\d+)する)$/))){
+    for (const u of ctx.placed || []){ const f = find(u); if (f) f.c.cm = {t: S.turn, zero: !m[2], v: m[2] ? -m[2] : 0}; }
+    if ((ctx.placed || []).length) log(`このターン、置いたカードのコストを${m[2] ? `-${m[2]}` : '0に'}する`);
+    return true;
+  }
+  if (/^残りを墓場に置く$/.test(s) && ctx.look){ S.grave.push(...ctx.look); log(`残り${ctx.look.length}枚を墓場へ`); ctx.look = []; return true; }
+  if ((m = s.match(/^残りを(?:好きな順に)?デッキの(上|下)に置く$/)) && ctx.look){
+    if (m[1] === '上') S.deck.unshift(...ctx.look); else S.deck.push(...ctx.look);
+    log(`残り${ctx.look.length}枚を山札の${m[1]}へ`); ctx.look = []; return true;
+  }
+  if ((m = s.match(/^自分のデッキから(.+?)(\d+)枚を探し、(手札に加える|場に出す)$/))){ ctx.lastSearch = m[1]; await search(m[1], +m[2], m[3], src, ctx.noFF); return true; }
+  if ((m = s.match(/^代わりにそれぞれ1枚を探し、(手札に加える|場に出す)$/)) && ctx.lastSearch){
+    const names = [...ctx.lastSearch.matchAll(/「([^「」]+)」/g)].map(a => a[1]);
+    for (const nm of names){
+      const c = S.deck.find(x => D(x).name === nm);
+      if (!c){ log(`山札に${nm}がない`); continue; }
+      if (m[1] === '場に出す') await putOnField(c.u, ctx.noFF, '山札から');
+      else { move(c.u, 'hand'); log(`山札から手札へ：${nm}`); }
+    }
+    shuffle(S.deck); log('山札をシャッフル'); return true;
+  }
+  return false;
+}
+
+/* 能力1つ分の文章を処理する */
+async function runSegment(seg, label, src, ctx){
+  seg = z2h(seg).trim(); if (!seg) return;
+  seg = seg.replace(/「([^「」]+)」(\d+)枚と「([^「」]+)」(\d+)枚をEXエリアに置く/g, '「$1」$2枚をEXエリアに置く。「$3」$4枚をEXエリアに置く').replace(/選んだフォロワーに/g, 'それに');
+  log(`▶ ${label}`);
+  const ci = seg.indexOf('：'), st = seg.indexOf('。');
+  if (ci > 0 && (st < 0 || ci < st) && !/^これをプレイする際、/.test(seg)){
+    if (!(await payCost(seg.slice(0, ci), src, ctx))){ log(`${label}：使わなかった`); return false; }
+    seg = seg.slice(ci + 1).trim();
+  }
+  // チョイス：選択肢を選んで、番号順に処理する
+  const chm = seg.match(/下記から(\d+)つチョイスする/);
+  if (chm){
+    const lines = seg.split('\n');
+    const opts = lines.map(l => l.trim().match(/^[\[［](\d+)[\]］](.+)$/)).filter(Boolean).map(m => ({n: +m[1], text: m[2].trim()}));
+    if (!opts.length){ log(`手動で処理（${label}）：${seg}`); return; }
+    let max = +chm[1], upTo = false;
+    const up = lines[0].match(/自分の墓場の(.+?)が(\d+)枚以上なら、代わりに(\d+)つまで/);
+    if (up){
+      const cnt = countGrave(up[1]);
+      if (cnt >= +up[2]){ max = +up[3]; upTo = true; log(`墓場の${up[1]}が${cnt}枚あるので、${max}つまで選べる`); }
+      else log(`墓場の${up[1]}が${cnt}枚なので、${max}つ選ぶ`);
+    }
+    const chosen = [];
+    for (let k = 0; k < Math.min(max, opts.length); k++){
+      const left = opts.filter(o => !chosen.includes(o));
+      const v = await ask({
+        title: `${label}：チョイス（${k + 1}つめ・${max}つ${upTo ? 'まで' : ''}）`,
+        note: chosen.length ? `選んだもの：${chosen.map(o => `[${o.n}]`).join(' ')}` : '',
+        items: left.map(o => ({label: `[${o.n}]`, sub: o.text, value: o.n, btn: '選ぶ', primary: true})),
+        skip: k === 0 ? '使わない' : 'これで決定',
+      });
+      if (v == null) break;
+      chosen.push(opts.find(o => o.n === v));
+    }
+    if (!chosen.length){ log(`${label}：チョイスを選ばなかった`); return; }
+    chosen.sort((a, b) => a.n - b.n);
+    for (const o of chosen) await runSegment(o.text, `${label}[${o.n}]`, src, ctx);
+    return;
+  }
+  let sents = splitSents(seg);
+  // 「下記をN回くり返す。〜」
+  const ri = sents.findIndex(x => /^下記を(\d+)回くり返す。?$/.test(x));
+  if (ri >= 0){ const n = +sents[ri].match(/(\d+)/)[1], body = sents.slice(ri + 1); sents = sents.slice(0, ri); for (let k = 0; k < n; k++) sents.push(...body); }
+  // サイコロの出た目
+  if (ctx.die != null){
+    sents = sents.map(x => x.replace(/それに「出た目」と同じダメージ/, `それに${ctx.die}ダメージ`));
+    const di = sents.findIndex(x => /^出た目が(\d+)なら、代わりに(\d+)ダメージ。?$/.test(x));
+    if (di >= 0){
+      const dm = sents[di].match(/^出た目が(\d+)なら、代わりに(\d+)ダメージ/);
+      if (ctx.die === +dm[1]) for (let j = di - 1; j >= 0; j--) if (/それに\d+ダメージ/.test(sents[j])){ sents[j] = sents[j].replace(/それに\d+ダメージ/, `それに${dm[2]}ダメージ`); break; }
+      sents.splice(di, 1);
+    }
+    // 出た目の条件を満たさないなら、その前の「〜を選ぶ」も飛ばす
+    for (let j = sents.length - 1; j > 0; j--){
+      const cm2 = sents[j].match(/^出た目が(\d+)なら、/);
+      if (cm2 && ctx.die !== +cm2[1] && /を選ぶ。?$/.test(sents[j - 1])){ sents.splice(j - 1, 1); j--; }
+    }
+  }
+  ctx.noFF = /ファンファーレ[^。]*(?:働かない|発動しない)/.test(seg);
+  const xi = sents.findIndex(s => /^Xは「自分のPP最大値」である。?$/.test(s));
+  if (xi >= 0){ ctx.X = S.maxPP; sents.splice(xi, 1); }
+  if (ctx.X != null) sents = sents.map(x => x.replace(/([+-])X(?![A-Za-z])/g, `$1${ctx.X}`));
+  sents = sents.filter(x => !/^Xは「このターン中に/.test(x));
+  const manual = [];
+  let condX = null, condOk = null; // 「5枚以上なら」「10枚以上なら」のような段階条件を引き継ぐ
+  for (let i = 0; i < sents.length; i++){
+    let s = sents[i], m;
+    if (ctx.paidPlus && /^コストを\+\d+したなら、代わりに/.test(sents[i + 1] || '')){
+      const mm = s.match(/^自分のデッキから(.+?)\d+枚を探し/); if (mm) ctx.lastSearch = mm[1];
+      continue;
+    }
+    if ((m = s.match(/^コストを\+\d+したなら、(.+)$/))){ if (!ctx.paidPlus) continue; s = m[1]; }
+    s = s.replace(/（[^）]*ファンファーレ[^）]*）/g, '');
+    if (/^この能力は/.test(s) || /^これは自分の場の.+プレイできない。?$/.test(s)) continue;
+    if ((m = s.match(/^(.*?)出た目が(\d+)なら、(.+)$/))){
+      condX = null; condOk = ctx.die === +m[2];
+      if (!condOk){ log(`出た目が${m[2]}じゃないので：${m[3]}（なし）`); continue; }
+      s = m[1] + m[3];
+    }
+    if ((m = s.match(/^(.*?)このターン、自分がふったサイコロの出た目に(\d+)があるなら、(.+)$/))){
+      condX = null; condOk = S.rollT === S.turn && (S.rolls || []).includes(+m[2]);
+      if (!condOk){ log(`条件未達（このターンの出た目に${m[2]}がない）：${m[3]}`); continue; }
+      s = m[1] + m[3];
+    }
+    if ((m = s.match(/^(.*?)自分のリーダーの体力が(\d+)以下なら、(.+)$/))){
+      condX = null; condOk = S.life <= +m[2];
+      if (!condOk){ log(`条件未達（自分のライフ${S.life}）：${m[3]}`); continue; }
+      s = m[1] + m[3];
+    }
+    if ((m = s.match(/^(.*?)このターン、自分の場のフォロワーが上限解放や最終上限解放を合わせて(\d+)回以上していたなら、(.+)$/))){
+      condX = null; condOk = lbNow() >= +m[2];
+      if (!condOk){ log(`条件未達（このターンの上限解放 ${lbNow()}/${m[2]}回）：${m[3]}`); continue; }
+      s = m[1] + m[3];
+    }
+    if ((m = s.match(/^(.*?)自分のPP最大値が(\d+)(以上)?なら、(.+)$/))){
+      condX = null; condOk = m[3] ? S.maxPP >= +m[2] : S.maxPP === +m[2];
+      if (!condOk){ log(`条件未達（PP最大値${S.maxPP}）：${m[4]}`); continue; }
+      s = m[1] + m[4];
+    }
+    if ((m = s.match(/^(.*?)自分のSEPが(\d+)なら、(.+)$/))){
+      condX = null; condOk = (S.sep ?? 0) === +m[2];
+      if (!condOk){ log(`条件未達（SEP${S.sep ?? 0}）：${m[3]}`); continue; }
+      s = m[1] + m[3];
+    }
+    if ((m = s.match(/^(.+?)を公開したなら、(.+)$/)) && ctx.revealed){
+      const t = makeFilter(m[1], src);
+      condX = null; condOk = ctx.revealed.some(c => t(D(c)));
+      if (!condOk){ log(`条件未達（${m[1]}を公開していない）：${m[2]}`); continue; }
+      s = m[2];
+    }
+    if ((m = s.match(/^(.*?)自分の場に(.+?)が(?:ない|いない)なら、(.+)$/))){
+      const test = makeFilter(m[2], src);
+      condX = null; condOk = !S.field.some(c => c.u !== ctx.self && (test(baseOf(c)) || test(D(c))));
+      if (!condOk){ log(`条件未達（自分の場に${m[2]}がある）：${m[3]}`); continue; }
+      s = m[1] + m[3];
+    }
+    if ((m = s.match(/^(.*?)自分の場の(.+?)が(\d+)体以上なら、(.+)$/))){
+      const test = makeFilter(m[2], src), n = S.field.filter(c => test(baseOf(c)) || test(D(c))).length;
+      condX = null; condOk = n >= +m[3];
+      if (!condOk){ log(`条件未達（自分の場の${m[2]} ${n}/${m[3]}体）：${m[4]}`); continue; }
+      s = m[1] + m[4];
+    }
+    if ((m = s.match(/^(.*?)自分の場に(.+?)がいるなら、(.+)$/))){
+      const test = makeFilter(m[2], src);
+      condX = null; condOk = S.field.some(c => c.u !== ctx.self && (test(baseOf(c)) || test(D(c))));
+      if (!condOk){ log(`条件未達（自分の場に${m[2]}がいない）：${m[3]}`); continue; }
+      s = m[1] + m[3];
+    }
+    if (/^これをプレイする際、/.test(s) || /^（.*）。?$/.test(s) || /^[^。]*ファンファーレ[^。]*(?:働かない|発動しない)。?$/.test(s)) continue;
+    if ((m = s.match(/^(.*?)自分の墓場の(.+?)が(\d+)枚以上なら、(.+)$/))){
+      condX = m[2];
+      const n = countGrave(m[2]); condOk = n >= +m[3];
+      if (!condOk){ log(`条件未達（墓場の${m[2]} ${n}/${m[3]}枚）：${m[4]}`); continue; }
+      s = m[1] + m[4];
+    } else if ((m = s.match(/^(\d+)枚以上なら、(.+)$/)) && condX){
+      const n = countGrave(condX); condOk = n >= +m[1];
+      if (!condOk){ log(`条件未達（墓場の${condX} ${n}/${m[1]}枚）：${m[2]}`); continue; }
+      s = m[2];
+    } else if (condOk === false) continue;
+    if (!(await doSentence(s, src, ctx))) manual.push(s);
+  }
+  if (ctx.lbPend) await resolveLB(ctx, 'plain');
+  if (ctx.look && ctx.look.length){ S.deck.unshift(...ctx.look); log(`${ctx.revealed ? '公開した' : '見た'}カード${ctx.look.length}枚を山札の上に戻した`); }
+  ctx.look = null;
+  if (manual.length) log(`手動で処理（${label}）：${manual.join('')}`);
+  return true;
+}
+/* 「起動」能力の一覧 */
+const abilitiesOf = def => z2h(def.text).split('\n').map(l => l.trim().match(/^(?:【クイック】)?【起動】(.+)$/)).filter(Boolean).map(m => m[1].trim());
+/* 「自分の場に〜が出たとき」：ほかのカードが場に出たときに動く能力 */
+async function onEnter(u){
+  if (!autoOn()) return;
+  const f = find(u); if (!f) return;
+  const nd = D(f.c);
+  for (const c of [...S.field]){
+    if (c.u === u || !find(c.u)) continue;
+    const b = baseOf(c);
+    for (const l of z2h(b.text).split('\n')){
+      const m = l.match(/^(?:自分のターン中、)?自分の場に(.+?)が出たとき、(.+)$/);
+      if (m && makeFilter(m[1], b)(nd)) await runSegment(m[2], `${b.name}（${nd.name}が出た）`, b, {self: c.u, target: u});
+    }
+  }
+}
+function segmentsOf(def, kind){
+  const out = [];
+  const lines = z2h(def.text).split('\n');
+  // チョイスの選択肢（[1]〜の行）を能力の文章につなげる
+  const withOpts = (seg, i) => { if (/チョイス/.test(seg)) for (let j = i + 1; j < lines.length && /^\s*[\[［]\d+[\]］]/.test(lines[j]); j++) seg += '\n' + lines[j]; return seg; };
+  lines.forEach((l, i) => {
+    let m;
+    // 「〜ある限り、これは「【攻撃時】…」を持つ」：条件を満たすときだけ、その能力を持つ
+    const g = l.match(/^(?:自分の墓場に(.+?)が(\d+)枚以上ある限り、)?これは.*?「【(ファンファーレ|ラストワード|進化時|攻撃時)】(.+?)」を持つ/);
+    if (g){ if (g[3] === kind && (!g[1] || (S && countGrave(g[1]) >= +g[2]))) out.push(g[4]); return; }
+    if (kind === 'エンドフェイズ'){ if ((m = l.match(/^(?:自分のエンドフェイズが来たとき|自分のターン終了時|ターン終了時)、(.+)/))) out.push(m[1]); return; }
+    if (kind === '上限解放'){ if ((m = l.match(/^これが上限解放したとき、(.+)/))) out.push(m[1]); return; }
+    if (kind === '最終上限解放'){ if ((m = l.match(/^これが最終上限解放したとき、(.+)/))) out.push(m[1]); return; }
+    if (kind === '手札から捨てたとき'){ if ((m = l.match(/^これを自分の手札から捨てたとき、(.+)/))) out.push(m[1]); return; }
+    // 能力の範囲は次の能力タグまで（文中の【疾走】などでは切らない）
+    if (/「【/.test(l)) return; // 「【攻撃時】〜」を持つ、のように得させる能力は、ここでは数えない
+    const re = /【(ファンファーレ|ラストワード|超進化時|進化時|攻撃時)】(.*?)(?=【(?:ファンファーレ|ラストワード|超進化時|進化時|攻撃時|起動|クイック|進化)】|$)/g;
+    while ((m = re.exec(l))) if (m[1] === kind) out.push(withOpts(m[2], i));
+  });
+  return out;
+}
+async function trigger(def, kind, ctx = {}){
+  if (!autoOn() || !def || !def.text) return;
+  for (const seg of segmentsOf(def, kind)) await runSegment(seg, `${def.name}の${kind}`, def, ctx);
+}
+async function runSpell(def, ctx = {}){
+  if (!autoOn() || !def.text) return;
+  const raw = z2h(def.text).split('\n'), lines = [];
+  raw.forEach(l => { if (/^\s*[\[［]\d+[\]］]/.test(l) && lines.length && /チョイス/.test(lines[lines.length - 1])) lines[lines.length - 1] += '\n' + l; else lines.push(l); });
+  for (let l of lines){
+    l = l.replace(/^\s*【クイック】/, '');
+    const rest = l.replace(/これをプレイする際、[^。]*。|（[^）]*）。?|これは自分の場の[^。]*プレイできない。|Xは「[^」]*」である。/g, '').trim();
+    if (!rest || /^【/.test(l.trim()) || /^これを自分の手札から|^自分の.+の能力によってこれを/.test(l.trim())) continue;
+    await runSegment(l, def.name, def, ctx);
+  }
+}
+
+/* ---------- actions on a selected card ---------- */
+async function act(a, u){
+  const f = find(u); if (!f) return;
+  const c = f.c, d = D(c), name = d.name;
+  save();
+  // 起動能力
+  if (a.startsWith('abil:')){
+    const i = Number(a.slice(5)), b = baseOf(c), t = abilitiesOf(b)[i];
+    if (!t || !(['field', 'ex'].includes(f.z) || (f.z === 'hand' && /手札のこれ/.test(t)))){ history.pop(); return; }
+    const quick = z2h(b.text).includes('【クイック】【起動】' + t);
+    if (/この能力はこのターン、自分が他の【クイック】【起動】能力をプレイしていたなら使える/.test(t) && S.quickT !== S.turn){ history.pop(); log('起動できない：このターン、まだ他の【クイック】【起動】能力を使ってない'); render(); return; }
+    const fr2 = t.match(/この能力は自分の場の(.+?)が(\d+)体以上なら使える/);
+    if (fr2){ const ft = makeFilter(fr2[1], b), n = S.field.filter(x => ft(baseOf(x))).length; if (n < +fr2[2]){ history.pop(); log(`起動できない：自分の場の${fr2[1]}が${n}/${fr2[2]}体`); render(); return; } }
+    if (/この能力はこのターン、自分がサイコロをふっていたなら使える/.test(t) && S.rollT !== S.turn){ history.pop(); log('起動できない：このターン、まだサイコロをふってない'); render(); return; }
+    const fr = t.match(/この能力は自分の場の(.+?)が(\d+)体以上なら使える/);
+    if (fr){ const ft = makeFilter(fr[1], b), n = S.field.filter(x => ft(baseOf(x))).length; if (n < +fr[2]){ history.pop(); log(`起動できない：自分の場の${fr[1]}が${n}/${fr[2]}体`); render(); return; } }
+    const r = t.match(/この能力は自分の墓場の(.+?)が(\d+)枚以上なら/);
+    if (r && countGrave(r[1]) < +r[2]){ history.pop(); log(`起動できない：墓場の${r[1]}が${countGrave(r[1])}/${r[2]}枚`); render(); return; }
+    c.actT = c.actT || {};
+    if (/1ターンに1回/.test(t) && c.actT[i] === S.turn){ history.pop(); log('この能力はこのターンもう使った'); render(); return; }
+    const ok = await runSegment(t, `${dispName(c)}の起動`, b, {self: u});
+    if (ok === false) history.pop(); else { c.actT[i] = S.turn; if (quick) S.quickT = S.turn; }
+    if (window.matchMedia('(max-width:700px)').matches) sel = null;
+    closeModal(); render(); return;
+  }
+  switch (a){
+    case 'play': {
+      const t = TYPE(d.type);
+      if (t !== 'spell' && S.field.length >= 5){ history.pop(); log('場がいっぱい（5枚）'); break; }
+      // 相手のフォロワーを選ぶスペルは、選べるフォロワーがいないとプレイできない（「〜まで」は除く）
+      if (t === 'spell'){
+        const body = z2h(d.text).split('\n').filter(l => !/^【/.test(l.trim()) && !/^[\[［]\d+[\]］]/.test(l.trim())).join('').replace(/これをプレイする際、[^。]*。/g, '');
+        const need = body.match(/(?:^|。)(アクト状態の)?相手の場のフォロワー\d+体を選ぶ。/);
+        if (need && !S.oppF.some(o => !need[1] || o.rest)){ history.pop(); log(`⚠ ${name}はプレイできない：選べる相手のフォロワーがいない`); break; }
+      }
+      const txt = z2h(d.text);
+      let base = Number(d.cost) || 0;
+      if (c.cm && c.cm.t === S.turn){ base = c.cm.zero ? 0 : Math.max(0, base + c.cm.v); log(`コスト変更あり：${name}のコストは${base}`); }
+      if (/これをプレイする際、コストを-Xする。Xは「このターン中に自分の場のフォロワーが上限解放や最終上限解放をした回数」/.test(txt) && lbNow()){ base = Math.max(0, base - lbNow()); log(`上限解放${lbNow()}回ぶん、コストは${base}`); }
+      const nd = S.nextDisc && S.nextDisc.t === S.turn && makeFilter(S.nextDisc.x, d)(d);
+      if (nd){ base = Math.max(0, base - S.nextDisc.v); log(`コスト-${S.nextDisc.v}：${name}のコストは${base}`); }
+      const ban = txt.match(/これは自分の場の(.+?)が(\d+)体以下なら、プレイできない/);
+      if (ban){ const bt = makeFilter(ban[1], d), n = S.field.filter(x => bt(baseOf(x))).length; if (n <= +ban[2]){ history.pop(); log(`プレイできない：自分の場の${ban[1]}が${n}体（${+ban[2] + 1}体以上必要）`); break; } }
+      const plus = txt.match(/これをプレイする際、コストを\+(\d+)してよい/);
+      const minus = txt.match(/これをプレイする際、([^。]+?)：コストを-(\d+)する/);
+      let cost = base; const ctx = {self: u};
+      if (autoOn() && (plus || minus)){
+        const items = [{label: `そのままプレイ（コスト${base}）`, value: 'n', disabled: base > S.pp, btn: 'これで'}];
+        if (plus) items.push({label: `コスト+${plus[1]}でプレイ（コスト${base + +plus[1]}）`, value: 'p', disabled: base + +plus[1] > S.pp, btn: 'これで', primary: true});
+        if (minus) items.push({label: `コスト-${minus[2]}でプレイ（コスト${Math.max(0, base - +minus[2])}）`, sub: `条件：${minus[1]}`, value: 'm', disabled: Math.max(0, base - +minus[2]) > S.pp, btn: 'これで', primary: true});
+        const ch = await ask({title: `${name}をプレイ`, note: `残りPP ${S.pp}`, items, skip: 'やめる'});
+        if (!ch){ history.pop(); break; }
+        if (ch === 'p'){ cost = base + +plus[1]; ctx.paidPlus = true; log(`コスト+${plus[1]}してプレイ`); }
+        if (ch === 'm'){
+          if (!(await payCost(minus[1], d, ctx))){ history.pop(); log('コストを下げる条件を満たせなかった'); break; }
+          cost = Math.max(0, base - +minus[2]);
+        }
+      }
+      if (cost > S.pp){ history.pop(); log(`PP不足：${name}（コスト${cost}、残りPP${S.pp}）`); break; }
+      // 追加コスト：「追加コストとして場の〜1体をアクトする」
+      const extra = autoOn() && txt.match(/これをプレイする際、追加コストとして(?:自分の)?場の(.+?)(\d+)体をアクトする/);
+      if (extra){
+        const test = makeFilter(extra[1], d), need = +extra[2];
+        let cands = S.field.filter(x => !x.rest && (test(baseOf(x)) || test(D(x))));
+        if (cands.length < need){ history.pop(); log(`追加コストを払えないのでプレイできない（スタンド状態の${extra[1]}が${need}体必要）`); break; }
+        for (let i = 0; i < need; i++){
+          const v = await pickCards(cands, null, {title: `${name}：追加コストとしてアクトする${extra[1]}`, note: '選んだフォロワーはアクト状態になる。', skip: 'やめる', btn: 'アクトする'});
+          if (v == null){ undo(); return; }
+          const x = find(v).c; log(`追加コスト：${dispName(x)}をアクト`); await setRest(x);
+          cands = cands.filter(y => y.u !== v);
+        }
+      }
+      S.pp -= cost; if (nd) S.nextDisc = null; move(u, t === 'spell' ? 'grave' : 'field');
+      log(`${name}をプレイ（PP−${cost}）${t==='spell'?'→墓場':''}`);
+      if (t === 'spell') await runSpell(d, ctx); else { await trigger(d, 'ファンファーレ', ctx); await onEnter(u); }
+      break;
+    }
+    case 'put': {
+      const fromEx = f.z === 'ex';
+      if (move(u,'field')){
+        log(`${name}を場に出した${fromEx ? '' : '（コストなし）'}`);
+        if (!fromEx){ await trigger(d, 'ファンファーレ', {self: u}); await onEnter(u); }
+      }
+      break;
+    }
+    case 'toEx': if (move(u,'ex')) log(`${name}をEXエリアへ`); break;
+    case 'toHand': move(u,'hand'); log(`${name}を手札へ`); break;
+    case 'toGrave': { const fromBoard = f.z === 'field' || f.z === 'ex', fromHand = f.z === 'hand'; const b = baseOf(c);
+      move(u,'grave'); log(`${name}を墓場へ`);
+      if (fromBoard){ await trigger(b, 'ラストワード', {self: u}); if (TYPE(b.type) === 'follower') await onDie(b); }
+      if (fromHand) await trigger(d, '手札から捨てたとき', {self: u});
+      break; }
+    case 'banish': move(u,'banish'); log(`${name}を消滅`); break;
+    case 'deckTop': move(u,'deck','top'); log(`${name}を山札の上へ`); break;
+    case 'deckBot': move(u,'deck','bottom'); log(`${name}を山札の下へ`); break;
+    case 'rest': if (c.rest){ c.rest = false; log(`${name}をスタンド`); } else { log(`${name}をアクト`); await setRest(c); } break;
+    case 'atkFollower': {
+      const ts = attackTargets(c);
+      if (!ts.length){ history.pop(); log('攻撃できる相手のフォロワーがいない'); break; }
+      const tu = await ask({title: `${dispName(c)}で攻撃する相手`, note: guards().length ? 'アクト状態の守護がいるので、守護に攻撃する。' : '',
+        items: ts.map(o => ({label: `${o.name} ${o.atk}/${oppHp(o)}${o.rest ? '（アクト）' : ''}${(o.kw || []).map(k => `【${k}】`).join('')}`, value: o.u, btn: '攻撃', primary: true})), skip: 'やめる'});
+      if (tu == null){ history.pop(); break; }
+      log(`${dispName(c)}で相手の${findOpp(tu).name}に攻撃`); await setRest(c);
+      await trigger(baseOf(c), '攻撃時', {self: u}); await runGrants(c, '攻撃時');
+      const o = findOpp(tu), me = find(u);
+      if (!o || !me || !['field', 'ex'].includes(me.z)) break;
+      const myAtk = atkOf(c) || 0, theirAtk = o.atk;
+      oppDamage(o, myAtk);
+      if (hasKw(c, '必殺') && myAtk > 0 && findOpp(o.u)){ log('【必殺】'); oppDestroy(o); }
+      if (hasKw(c, 'ドレイン') && myAtk > 0){ S.life += myAtk; log(`【ドレイン】自分のライフ+${myAtk} → ${S.life}`); }
+      if (c.noBattleDmg === S.turn) log(`${dispName(c)}は交戦ダメージを受けない`);
+      else await myDamage(c, theirAtk);
+      break;
+    }
+    case 'atkLeader': { if (guards().length){ history.pop(); log('アクト状態の守護がいるので、リーダーは攻撃できない'); break; } log(`${dispName(c)}でリーダーに攻撃`); await setRest(c); await trigger(baseOf(c), '攻撃時', {self: u}); await runGrants(c, '攻撃時'); const v = atkOf(c) || 0; S.opp -= v; log(`相手ライフ−${v} → ${S.opp}`); if (hasKw(c, 'ドレイン') && v > 0){ S.life += v; log(`【ドレイン】自分のライフ+${v} → ${S.life}`); } break; }
+    case 'am+': c.am++; break; case 'am-': c.am--; break;
+    case 'dm+': c.dm++; break; case 'dm-': c.dm--; break;
+    case 'cnt+': c.cnt++; break; case 'cnt-': c.cnt = Math.max(0, c.cnt-1); break;
+    case 'dmg+': await myDamage(c, 1); break;
+    case 'dmg-': c.dmg = Math.max(0, (c.dmg || 0) - 1); break;
+    case 'unsick': c.ent = -1; log(`${dispName(c)}の攻撃制限を外した`); break;
+    case 'evoBack': S.evo.push(S.evoUsed.splice(f.i,1)[0]); log(`${name}を未使用に戻した`); break;
+    case 'devolve': if (c.evo){ const e = c.evo; c.evo = null; S.evoUsed.push(e); log(`${name}の進化を解除`); } break;
+    default: history.pop();
+  }
+  // スマホでは、カードを動かしたら操作パネルを閉じる（数値の調整とレストは開いたまま）
+  if (window.matchMedia('(max-width:700px)').matches && !/^(am|dm|cnt|dmg)[+-]$|^rest$|^unsick$/.test(a)) sel = null;
+  closeModal(); render();
+}
+async function evolveWith(u, eu){
+  let f = find(u), e = find(eu); if (!f || !e) return;
+  const cm = z2h(D(f.c).text).match(/【進化】\[(\d+)\]/) || z2h(D(f.c).text).match(/\[(\d+)\]：これは進化する/);
+  const N = cm ? +cm[1] : null;
+  const items = [];
+  if (N != null){
+    items.push({label: `PPを${N}払う`, value: 'pp', disabled: S.pp < N, btn: '進化', primary: S.ep < 1});
+    if (N >= 1) items.push({label: `EP1＋PP${N - 1}で払う`, sub: 'EPは1回の支払いで1つだけ、1PPの代わりに使える', value: 'ep', disabled: S.ep < 1 || S.pp < N - 1, btn: '進化', primary: S.ep >= 1});
+  } else {
+    items.push({label: 'EPを1使う', value: 'ep1', disabled: S.ep < 1, btn: '進化', primary: true});
+  }
+  items.push({label: 'コストを払わない', sub: 'カードの効果で進化するときなど', value: 'free', btn: '進化'});
+  const supTurn = S.first ? 7 : 6;
+  if ((S.sep ?? 0) > 0 && S.turn >= supTurn) items.filter(it => it.value !== 'free').forEach(it => items.push({...it, value: 'S' + it.value, label: `超進化：${it.label}（SEP−1）`, sub: '攻撃と体力+1。進化時と超進化時の能力が働く', btn: '超進化', primary: false}));
+  const note = `${N != null ? `進化コスト ${N}` : 'テキストから進化コストが読めない'}。残りPP ${S.pp}、EP ${S.ep}、SEP ${S.sep ?? 0}${S.turn < supTurn ? `（超進化は自分の${supTurn}ターン目から）` : ''}。${S.evoTurn === S.turn ? 'このターンはもう進化してる（1ターン1回まで）。' : ''}`;
+  let ch = await ask({title: `${D(f.c).name}を進化`, note, items, skip: 'やめる'});
+  if (!ch){ render(); return; }
+  f = find(u); e = find(eu); if (!f || !e) return;
+  save();
+  const sup = ch[0] === 'S'; if (sup) ch = ch.slice(1);
+  let paid = '';
+  if (ch === 'pp'){ S.pp -= N; paid = `PP−${N}`; }
+  if (ch === 'ep'){ S.ep -= 1; S.pp -= N - 1; paid = `EP−1${N > 1 ? `・PP−${N - 1}` : ''}`; }
+  if (ch === 'ep1'){ S.ep -= 1; paid = 'EP−1'; }
+  if (ch === 'free') paid = 'コストなし';
+  S.evo.splice(e.i, 1);
+  f.c.evo = e.c; S.evoTurn = S.turn; f.c.evoT = S.turn;
+  log(`${D(f.c).name}を進化 → ${D(e.c).name}（${paid}）`);
+  if (sup){ S.sep--; f.c.am++; f.c.dm++; f.c.superT = S.turn; log(`超進化（SEP−1、攻撃と体力+1）`); }
+  await trigger(D(e.c), '進化時', {self: u});
+  if (sup) await trigger(D(e.c), '超進化時', {self: u});
+  if (window.matchMedia('(max-width:700px)').matches) sel = null;
+  closeModal(); render();
+}
+
+function baseOf(c){ return c.evo ? D(c.evo) : D(c); }
+const piloted = c => !!(c.pilot && S && c.pilot.t === S.turn);
+function atkOf(c){ if (piloted(c)) return c.pilot.atk + c.am; const b = baseOf(c); return b.atk == null ? null : b.atk + c.am + ((c.lb || 0) >= 1 ? 1 : 0); }
+function defOf(c){ if (piloted(c)) return c.pilot.def + c.dm; const b = baseOf(c); return b.def == null ? null : b.def + c.dm + ((c.lb || 0) >= 2 ? 1 : 0); }
+function dispName(c){ return baseOf(c).name; }
+
+/* キーワードを持っているか（行頭の【疾走】など、効果で得たもの、「〜ある限り、これは【疾走】を持つ」） */
+const TRIGGER_TAGS = ['ファンファーレ','ラストワード','超進化時','進化時','攻撃時','起動','進化','クイック'];
+function hasKw(c, k){
+  if ((c.kw || []).includes(`【${k}】`)) return true;
+  for (const l of z2h(baseOf(c).text).split('\n')){
+    const head = l.trim().match(/^((?:【[^】]+】)+)/);
+    if (head){
+      for (const tag of head[1].match(/【[^】]+】/g)){
+        const name = tag.slice(1, -1);
+        if (TRIGGER_TAGS.includes(name)) break;
+        if (name === k) return true;
+      }
+    }
+    const m = l.match(/自分の墓場に(.+?)が(\d+)枚以上ある限り、これは(.*)を持つ/);
+    if (m && m[3].includes(`【${k}】`) && countGrave(m[1]) >= +m[2]) return true;
+    const lbm = l.match(/このターン、自分の場のフォロワーが上限解放や最終上限解放を合わせて(\d+)回以上していたなら、これは(.*)を持つ/);
+    if (lbm && lbm[2].includes(`【${k}】`) && lbNow() >= +lbm[1]) return true;
+    const sm = l.match(/自分のSEPが(\d+)である限り、これは(.*)を持つ/);
+    if (sm && sm[2].includes(`【${k}】`) && (S.sep ?? 0) === +sm[1]) return true;
+    const lm = l.match(/自分のリーダーの体力が(\d+)以下である限り、これは(.*)を持つ/);
+    if (lm && lm[2].includes(`【${k}】`) && S.life <= +lm[1]) return true;
+  }
+  return false;
+}
+/* 攻撃できるか：ターンの最初から場にいたら両方OK。出たターンは【疾走】なら両方、【突進】かこのターンに進化したならフォロワーだけ */
+function atkState(c){
+  if (c.rest) return {f: false, l: false, why: ''};
+  if (c.ent == null || c.ent < S.turn) return {f: true, l: true, why: ''};
+  if (hasKw(c, '疾走')) return {f: true, l: true, why: ''};
+  if (hasKw(c, '突進') || c.evoT === S.turn) return {f: true, l: false, why: `出たターンなので、フォロワーにだけ攻撃できる（${hasKw(c, '突進') ? '【突進】' : 'このターンに進化'}）。`};
+  return {f: false, l: false, why: '出たターンなので、まだ攻撃できない。'};
+}
+
+/* ---------- render ---------- */
+function cardHTML(c, zone){
+  const b = baseOf(c), t = c.evo ? 'evo' : (D(c).evo ? 'evo' : TYPE(b.type));
+  const a = atkOf(c), df = defOf(c) == null ? null : defOf(c) - (c.dmg || 0);
+  const onBoard = zone === 'field' || zone === 'ex';
+  const stat = (v, m, cls) => v == null ? '' : `<span class="${cls}">${v}${onBoard && m ? `<span class="mod">${m>0?'+':''}${m}</span>`:''}</span>`;
+  return `<button type="button" class="card t-${t} ${c.rest?'rested':''} ${sel===c.u?'sel':''}" data-u="${c.u}">
+    <span class="row1"><span class="cost">${esc(b.cost === '' ? '-' : b.cost)}</span><span class="cname">${esc(b.name)}</span></span>
+    ${b.text ? `<span class="ctext">${esc(b.text)}</span>` : ''}
+    <span class="cfoot">${stat(a, c.am, 'atk')}<span>${c.evo?'<span class="badge evo">進化</span> ':''}${c.cnt?`<span class="badge">×${c.cnt}</span>`:''}${c.lb?`<span class="badge evo">${c.lb===2?'最終':'上限'}</span>`:''}${(c.kw||[]).map(k=>`<span class="badge">${esc(k.slice(1,-1))}</span>`).join('')}</span>${stat(df, c.dm, 'def')}</span>
+  </button>`;
+}
+function slotsHTML(arr, zone){
+  let h = '';
+  for (let i=0;i<5;i++) h += arr[i] ? `<div class="slot">${cardHTML(arr[i], zone)}</div>` : `<div class="slot empty">空き</div>`;
+  return h;
+}
+
+function detailHTML(){
+  const oc = sel != null && S && findOpp(sel);
+  if (oc) return oppDetailHTML(oc);
+  const f = sel != null && find(sel);
+  if (!f) return `<h2>選択中のカード</h2><p style="margin:0;color:var(--muted);font-size:13px">カードをタップすると全文と操作がここに出る。</p>`;
+  const c = f.c, d = D(c), b = baseOf(c), z = f.z;
+  const B = (a, l, cls='', dis=false) => `<button type="button" class="${cls}" data-act="${a}" data-u="${c.u}" ${dis?'disabled':''}>${l}</button>`;
+  let acts = [], atkNote = '';
+  if (z === 'hand'){
+    acts = [B('play','プレイ（PPを払う）','primary'), B('put','コストなしで場へ'), B('toGrave','墓場へ（捨てる）'), B('banish','消滅'), B('deckTop','山札の上へ')];
+    abilitiesOf(b).forEach((t, i) => { if (/手札のこれ/.test(t)) acts.splice(1, 0, B(`abil:${i}`, `手札から起動（${esc(t.split('：')[0])}）`)); });
+  } else if (z === 'ex'){
+    acts = /トレジャー/.test(b.type) ? [B('banish','消す')] : [B('play','プレイ（PPを払う）','primary'), B('put','コストなしで場へ'), B('toGrave','墓場へ'), B('banish','消滅'), B('toHand','手札へ'), B('deckTop','山札の上へ')];
+    if (/トレジャー/.test(b.type)) abilitiesOf(b).forEach((t, i) => acts.unshift(B(`abil:${i}`, '起動（上限解放）', 'primary')));
+    if (c.cm && c.cm.t === S.turn) atkNote += `<div class="dmeta">このターン、コストが${c.cm.zero ? '0' : `${c.cm.v}`}になってる。</div>`;
+  } else if (z === 'field'){
+    const isAmu = TYPE(b.type) === 'amulet' && !piloted(c), st = atkState(c), gd = guards().length, ts = attackTargets(c).length;
+    acts = isAmu ? [] : [B('atkLeader','リーダーに攻撃','primary', !st.l || gd > 0), B('atkFollower','フォロワーに攻撃','', !st.f || !ts)];
+    if (!isAmu && !c.rest){
+      if (gd) atkNote += '<div class="dmeta">相手にアクト状態の守護がいるので、守護にしか攻撃できない。</div>';
+      else if (st.f && !ts) atkNote += '<div class="dmeta">攻撃できる相手のフォロワーがいない（アクト状態のフォロワーにだけ攻撃できる）。</div>';
+    }
+    acts.push(B('rest', c.rest?'スタンド':'レスト'));
+    if (!isAmu && st.why) atkNote += `<div class="dmeta">${esc(st.why)}<button type="button" class="linkbtn" data-act="unsick" data-u="${c.u}">効果で攻撃できる（制限を外す）</button></div>`;
+    if (!d.evo) acts.push(c.evo ? B('devolve','進化を解除') : `<button type="button" data-evolve="${c.u}">進化</button>`);
+    abilitiesOf(b).forEach((t, i) => { const cp = t.split('：')[0]; acts.push(B(`abil:${i}`, `起動（${esc(cp.length > 14 ? cp.slice(0, 14) + '…' : cp)}）`, '', (/1ターンに1回/.test(t) && c.actT && c.actT[i] === S.turn))); });
+    acts.push(B('toGrave','破壊（墓場へ）','danger'), B('banish','消滅'), B('toHand','手札へ戻す'), B('deckTop','山札の上へ'));
+  } else if (z === 'evoUsed'){
+    acts = [B('evoBack','未使用に戻す'), B('toHand','手札へ')];
+  } else {
+    acts = [B('toHand','手札へ'), B('put','場へ'), B('toGrave','墓場へ'), B('banish','消滅'), B('deckTop','山札の上へ'), B('deckBot','山札の下へ')];
+  }
+  const adj = (z === 'field') ? `<div class="adj">
+      ダメージ ${B('dmg-','−')}<span>${c.dmg||0}</span>${B('dmg+','＋')}
+      攻撃 ${B('am-','−')}<span>${c.am>=0?'+':''}${c.am}</span>${B('am+','＋')}
+      体力 ${B('dm-','−')}<span>${c.dm>=0?'+':''}${c.dm}</span>${B('dm+','＋')}
+      カウンター ${B('cnt-','−')}<span>${c.cnt}</span>${B('cnt+','＋')}</div>` : '';
+  const a = atkOf(c), df = defOf(c);
+  return `<div class="dhead"><h2>選択中・${ZNAME[z]}</h2><button type="button" class="closesel" data-closesel="1">閉じる</button></div>
+    <div class="dname">${esc(b.name)}</div>
+    <div class="dmeta"><span class="badge">${esc(b.type)}</span><span>コスト ${esc(b.cost===''?'-':b.cost)}</span>${a!=null?`<span>攻撃 ${a} / 体力 ${df - (c.dmg||0)}${c.dmg?`（ダメージ${c.dmg}）`:''}</span>`:''}${c.evo?`<span class="badge evo">進化元：${esc(d.name)}</span>`:''}${(c.kw||[]).length?`<span class="badge">得た能力：${esc(c.kw.join(''))}</span>`:''}</div>
+    ${b.text ? `<div class="dtext">${esc(b.text)}</div>` : ''}
+    ${c.evo && d.text ? `<div class="dmeta">進化前のテキスト</div><div class="dtext">${esc(d.text)}</div>` : ''}
+    ${adj}${atkNote}
+    <div class="actions">${acts.join('')}</div>`;
+}
+
+function render(){
+  const setup = !S;
+  $('setupView').hidden = !setup; $('gameView').hidden = setup;
+  $('btnUndo').disabled = !history.length || !!(S && S.pvp);
+  if (setup){ renderSetup(); return; }
+  $('mullBanner').hidden = S.phase !== 'mull';
+  $('btnMull').disabled = S.mulled;
+  checkEnd();
+  $('btnTurnStart').disabled = $('btnTurnEnd').disabled = $('pxStart').disabled = $('pxEnd').disabled = S.phase === 'mull' || S.phase === 'wait' || !!S.over;
+  $('endBanner').hidden = !S.over;
+  if (S.over){
+    $('endText').textContent = S.over === 'win' ? '勝ち' : '負け';
+    const mem = S.O && CPUMEM[S.O.deckId];
+    $('endSub').textContent = mem ? `CPU（${S.O.name}）の通算：${mem.games}戦${mem.wins}勝。結果をもとに動きを調整した。` : '';
+  }
+  document.body.classList.toggle('has-sel', !!(sel != null && find(sel)));
+  $('turnLbl').textContent = S.phase === 'wait' ? (S.pvp && !NET.on ? '相手との接続が切れた' : '相手のターン') : S.phase === 'mull' ? 'マリガン' : S.turn === 0 ? 'ゲーム開始前' : `${S.first?'先攻':'後攻'}・自分のターン${S.turn}`;
+  $('vLife').textContent = S.life; $('vOpp').textContent = S.opp; $('vEP').textContent = S.ep; $('lblEP').textContent = `EP・SEP${S.sep ?? 0}`;
+  $('vPP').textContent = `${S.pp}/${S.maxPP}`;
+  $('ppDots').innerHTML = Array.from({length: Math.max(S.maxPP, 0)}, (_, i) => `<i class="${i < S.pp ? 'on' : ''}"></i>`).join('');
+  let oh = ''; for (let i = 0; i < 5; i++) oh += S.oppF[i] ? `<div class="slot">${oppCardHTML(S.oppF[i])}</div>` : '<div class="slot empty">空き</div>';
+  $('oppField').innerHTML = oh;
+  const st = S.oppStat;
+  $('nOpp').textContent = `${S.oppF.length}/5` + (S.pvp && st ? `　手札${st.hand}・山札${st.deck}・PP${st.pp}/${st.maxPP}・EP${st.ep}・EX${st.ex}${st.am && st.am.length ? `・アミュレット：${st.am.join('、')}` : ''}` : '') + (S.O ? `　手札${S.O.hand.length}・山札${S.O.deck.length}・PP${S.O.pp}/${S.O.maxPP}・EP${S.O.ep}` : '');
+  $('btnOppAdd').hidden = !!S.O || !!S.pvp;
+  $('nOppGrave').textContent = S.pvp ? (S.oppGraveRemote || []).length : S.O ? S.O.grave.length : (S.oppGraveManual || []).length;
+  $('field').innerHTML = slotsHTML(S.field, 'field'); $('ex').innerHTML = slotsHTML(S.ex, 'ex');
+  $('nField').textContent = `${S.field.length}/5`; $('nEx').textContent = `${S.ex.length}/5`;
+  $('hand').innerHTML = S.hand.length ? S.hand.map(c => cardHTML(c, 'hand')).join('') : '<span style="color:var(--muted);font-size:12px;align-self:center">手札なし</span>';
+  $('nHand').textContent = `${S.hand.length}枚${S.hand.length>7?'（上限7）':''}`;
+  $('graveBreak').innerHTML = graveBreakHTML();
+  $('cDeck').textContent = S.deck.length; $('cGrave').textContent = S.grave.length; $('cEvo').textContent = S.evo.length;
+  $('cEvoUsed').textContent = S.evoUsed.length; $('cBan').textContent = S.banish.length;
+  $('detail').innerHTML = detailHTML();
+  $('log').innerHTML = S.log.map(l => `<div><span class="t">${esc(l.t)}</span>${esc(l.m)}</div>`).join('');
+  if (modalZone) openZone(modalZone);
+  if (S.pvp && !NET.applying) netSchedule();
+}
+
+/* 墓場の内訳：種類ごと、多いタイプ、クラスのフォロワー */
+function graveStats(){
+  const gd = S.grave.map(c => D(c));
+  const n = t => gd.filter(d => TYPE(d.type) === t).length;
+  const tribes = {}, cls = {};
+  gd.forEach(d => {
+    const m = String(d.type).match(/（(.+?)）/); if (m) m[1].split('・').forEach(x => { tribes[x] = (tribes[x] || 0) + 1; });
+    if (d.cls && d.cls !== 'ニュートラル' && TYPE(d.type) === 'follower') cls[d.cls] = (cls[d.cls] || 0) + 1;
+  });
+  return {f: n('follower'), s: n('spell'), a: n('amulet'),
+    tribes: Object.entries(tribes).sort((a, b) => b[1] - a[1]).slice(0, 2),
+    cls: Object.entries(cls).sort((a, b) => b[1] - a[1])[0]};
+}
+function graveBreakHTML(){
+  const g = graveStats();
+  return `<span>フォロワー <b>${g.f}</b></span><span>スペル <b>${g.s}</b></span>${g.a ? `<span>アミュレット <b>${g.a}</b></span>` : ''}`
+    + g.tribes.map(([k, v]) => `<span>${esc(k)} <b>${v}</b></span>`).join('')
+    + (g.cls ? `<span>${esc(g.cls[0])}・フォロワー <b>${g.cls[1]}</b></span>` : '');
+}
+
+/* ---------- modal ---------- */
+let modalZone = null;
+function openZone(z){
+  modalZone = z;
+  const inOrder = z === 'deck' && !deckByCost;
+  const list = inOrder ? S[z] : [...S[z]].sort(byCostInst);
+  const gs = z === 'grave' ? graveStats() : null;
+  $('mTitle').textContent = `${ZNAME[z]}（${S[z].length}枚${gs ? `：フォロワー${gs.f}・スペル${gs.s}${gs.a ? `・アミュレット${gs.a}` : ''}` : ''}）${inOrder ? '・上から順' : '・コスト順'}`;
+  const B = (a, u, l) => `<button type="button" data-act="${a}" data-u="${u}">${l}</button>`;
+  $('mBody').innerHTML = (z === 'deck' ? `<div class="actions"><button type="button" data-deckorder="1">${deckByCost ? '上から順にする' : 'コスト順にする'}</button></div>` : '') + (S[z].length ? list.map((c, i) => {
+    const d = D(c);
+    let acts = z === 'evo' ? '' : z === 'evoUsed'
+      ? B('evoBack', c.u, '未使用へ') + B('toHand', c.u, '手札へ')
+      : [z!=='hand'&&B('toHand',c.u,'手札へ'), B('put',c.u,'場へ'), z!=='grave'&&B('toGrave',c.u,'墓場へ'), z!=='banish'&&B('banish',c.u,'消滅'), B('deckTop',c.u,'山札上'), B('deckBot',c.u,'山札下')].filter(Boolean).join('');
+    return `<div class="mrow"><div><div class="nm">${inOrder?`<span class="badge">${i+1}</span> `:''}${esc(d.name)} <span class="badge">${esc(d.type)} ${esc(d.cost)}</span>${d.atk!=null?` <span class="badge">${d.atk}/${d.def}</span>`:''}</div>${d.text?`<div class="tx">${esc(d.text)}</div>`:''}</div><div class="actions">${acts}</div></div>`;
+  }).join('') : '<p style="color:var(--muted)">カードなし</p>');
+  $('overlay').hidden = false;
+}
+function openEvolve(u, all){
+  modalZone = null;
+  const f = find(u); if (!f) return;
+  const nm = D(f.c).name;
+  const same = S.evo.filter(c => D(c).name === nm);
+  const list = (all ? S.evo : same).slice().sort(byCostInst);
+  const others = S.evo.length - same.length;
+  $('mTitle').textContent = `${nm} を進化`;
+  $('mBody').innerHTML = (!all && !same.length ? `<p class="fmt" style="margin:0">「${esc(nm)}」のエボルヴカードが未使用の中にない。</p>` : '')
+    + (!all && others ? `<div class="actions"><button type="button" data-evolveall="${u}">ほかのエボルヴカードも表示（${others}枚）</button></div>` : '')
+    + (list.length ? list.map(c => { const d = D(c);
+    return `<div class="mrow"><div><div class="nm">${esc(d.name)} <span class="badge">${d.atk??'-'}/${d.def??'-'}</span></div>${d.text?`<div class="tx">${esc(d.text)}</div>`:''}</div>
+    <div class="actions"><button type="button" class="primary" data-evo="${u}:${c.u}">これで進化</button></div></div>`; }).join('')
+    : (all ? '<p style="color:var(--muted)">未使用のエボルヴカードがない。</p>' : ''));
+  $('overlay').hidden = false;
+}
+function closeModal(){
+  modalZone = null; $('overlay').hidden = true;
+  if (promptResolve){ const r = promptResolve; promptResolve = null; r(null); }
+}
+
+/* ---------- events ---------- */
+document.addEventListener('click', ev => {
+  const t = ev.target.closest('button'); if (!t) return;
+  if (t.dataset.pick != null){ const i = Number(t.dataset.pick), r = promptResolve; promptResolve = null; $('overlay').hidden = true; if (r) r(i < 0 ? null : promptItems[i].value); return; }
+  if (t.dataset.cnt){ const k = t.dataset.k, part = k.startsWith('E:') ? 'evo' : 'main';
+    const n = Math.max(0, (DK[part][k] || 0) + Number(t.dataset.cnt));
+    if (n) DK[part][k] = n; else delete DK[part][k];
+    const cc = libGet(k); if (!DK.cls && n && cc){ const rc = realCls(cc); DK.cls = titleOf(cc) && (!rc || rc === 'ニュートラル') ? titleOf(cc) : (rc && rc !== 'ニュートラル' ? rc : ''); }
+    pendingDel = null; pendingClear = false; persist(); renderSetup(); return; }
+  if (t.dataset.del){ const k = t.dataset.k;
+    if (pendingDel !== k){ pendingDel = k; renderSetup(); return; }
+    LIB = LIB.filter(c => keyOf(c) !== k); delete DK.main[k]; delete DK.evo[k]; pendingDel = null; persist(); renderSetup(); return; }
+  if (t.dataset.loaddeck){ DK = JSON.parse(JSON.stringify(SAVED[Number(t.dataset.loaddeck)])); pendingDel = null; persist(); renderSetup(); return; }
+  if (t.dataset.deldeck){ const i = Number(t.dataset.deldeck);
+    if (pendingDel !== 'deck:' + i){ pendingDel = 'deck:' + i; renderSetup(); return; }
+    SAVED.splice(i, 1); pendingDel = null; persist(); renderSetup(); return; }
+  if (t.dataset.act){ act(t.dataset.act, Number(t.dataset.u)); return; }
+  if (t.dataset.proxy){ $(t.dataset.proxy).click(); return; }
+  if (t.dataset.ou){ const u = Number(t.dataset.ou); sel = sel === u ? null : u; render(); return; }
+  if (t.id === 'btnOppAdd'){ openOppAdd(); return; }
+  if (t.id === 'btnOppGrave' || t.closest('#btnOppGrave')){ openOppGrave(); return; }
+  if (t.dataset.oaddform){ save(); const kw = [...$('mBody').querySelectorAll('[data-okw]')].filter(x => x.checked).map(x => x.dataset.okw); addOpp({name: $('oName').value.trim() || '相手のフォロワー', atk: $('oAtk').value, def: $('oDef').value, kw, rest: $('oRest').checked}); closeModal(); render(); return; }
+  if (t.dataset.oaddlib){ const c = libGet(t.dataset.oaddlib); if (!c) return; save(); addOpp({name: c.name, atk: c.atk, def: c.def, kw: kwFromText(c.text), rest: $('oRest').checked}); closeModal(); render(); return; }
+  if (t.dataset.oact){
+    const o = findOpp(Number(t.dataset.ou2)); if (!o) return; save(); const a = t.dataset.oact;
+    if (a === 'dmg+') oppDamage(o, 1); else if (a === 'dmg-') o.dmg = Math.max(0, (o.dmg || 0) - 1);
+    else if (a === 'atk+') o.atk++; else if (a === 'atk-') o.atk = Math.max(0, o.atk - 1);
+    else if (a === 'rest') o.rest = !o.rest; else if (a === 'destroy') oppDestroy(o);
+    else if (a === 'remove'){ S.oppF.splice(S.oppF.indexOf(o), 1); if (o.ru != null) (S._gone = S._gone || {})[o.ru] = 'hand'; log(`相手の${o.name}を場から戻した`); sel = null; }
+    else if (a.startsWith('kw:')){ const k = a.slice(3); o.kw = oppHas(o, k) ? o.kw.filter(x => x !== k) : [...(o.kw || []), k]; }
+    render(); return;
+  }
+  if (t.dataset.closesel){ sel = null; render(); return; }
+  if (t.dataset.evolve){ openEvolve(Number(t.dataset.evolve)); return; }
+  if (t.dataset.evolveall){ openEvolve(Number(t.dataset.evolveall), true); return; }
+  if (t.dataset.deckorder){ deckByCost = !deckByCost; openZone('deck'); return; }
+  if (t.dataset.evo){ const [u, e] = t.dataset.evo.split(':').map(Number); closeModal(); evolveWith(u, e); return; }
+  if (t.classList.contains('card')){ const u = Number(t.dataset.u); sel = sel === u ? null : u; render(); return; }
+  if (t.dataset.adj){ const [k, v] = t.dataset.adj.split(':'); save(); S[k] += Number(v);
+    if (k === 'maxPP') S.maxPP = Math.max(0, Math.min(10, S.maxPP));
+    if (k === 'pp' || k === 'ep' || k === 'sep') S[k] = Math.max(0, S[k] || 0);
+    render(); return; }
+  if (t.dataset.pile){
+    const p = t.dataset.pile;
+    if (p === 'draw'){ save(); draw(1); render(); }
+    else if (p === 'shuffle'){ save(); shuffle(S.deck); log('山札をシャッフル'); render(); }
+    else if (p === 'mill'){ if (!S.deck.length) return; save(); const c = S.deck.shift(); S.grave.push(c); log(`山札の上を墓場へ：${D(c).name}`); render(); }
+    else if (p.startsWith('view:')) openZone(p.slice(5));
+  }
+});
+$('mClose').onclick = closeModal;
+$('overlay').addEventListener('click', e => { if (e.target === $('overlay')) closeModal(); });
+document.addEventListener('keydown', e => { if (e.key === 'Escape' && !$('overlay').hidden) closeModal(); });
+$('btnStart').onclick = () => { if (NET.on){ netStartGame(); return; } start(); };
+$('btnUndo').onclick = undo;
+$('btnSetup').onclick = () => { S = null; history = []; sel = null; closeModal(); render(); };
+$('btnMull').onclick = () => { save(); const n = S.hand.length; S.deck.push(...S.hand.splice(0)); for (let i=0;i<n;i++) S.hand.push(S.deck.shift()); S.mulled = true; log(`マリガン：手札${n}枚を山札の下に置いて、上から${n}枚引いた`); render(); };
+$('btnKeep').onclick = async () => {
+  if (S.pvp){ history = []; S.phase = 'wait'; log('キープ。相手の準備を待つ'); NET.ready.me = true; render(); netFlush(); netSend({t: 'ready'}); netMaybeBegin(); return; }
+  save(); S.phase = 'play'; log('キープ。ゲーム開始');
+  if (S.O && !S.first){ await cpuTurn(); if (S.over){ render(); return; } }
+  if ($('optAuto').checked){ history.pop(); turnStart(); return; }
+  render();
+};
+$('btnRematch').onclick = () => { closeModal(); if (NET.on){ if (NET.role === 'host') netStartGame(); else netStatus('部屋を作った人が「もう一度」を押すのを待って。'); return; } start(); };
+$('btnToSetup').onclick = () => $('btnSetup').click();
+$('oppDeckSel').addEventListener('change', e => { LS.set('evolveSolo.oppDeck', e.target.value); renderSetup(); });
+$('btnTurnStart').onclick = turnStart;
+$('btnTurnEnd').onclick = turnEnd;
+$('btnImport').onclick = () => {
+  const r = importCards($('importText').value, $('impEvo').checked, false, $('impCls').value);
+  const msg = [];
+  if (r.add) msg.push(`${r.add}種類を追加`);
+  if (r.upd) msg.push(`${r.upd}種類を上書き`);
+  if (!r.add && !r.upd) msg.push('読み込めるカードがなかった');
+  $('importMsg').innerHTML = esc(msg.join('、')) + (r.errs.length ? '<br>' + r.errs.map(esc).join('<br>') : '');
+  if (r.add || r.upd) $('importText').value = '';
+  persist(); renderSetup();
+};
+$('deckSel').addEventListener('change', e => { const d = SAVED.find(x => x.id === e.target.value); if (d){ DK = d; pendingDel = null; persist(); renderSetup(); } });
+$('btnNewDeck2').onclick = () => {
+  const d = {id: newId(), name: `デッキ${SAVED.length + 1}`, cls: '', main: {}, evo: {}};
+  SAVED.push(d); DK = d; pendingDel = null; persist(); renderSetup();
+  $('deckName').focus(); $('deckName').select();
+};
+$('btnDeckImport').onclick = () => {
+  const lines = $('deckImportText').value.split('\n').map(l => l.trim()).filter(Boolean);
+  const d = {id: newId(), name: '', cls: '', main: {}, evo: {}}, miss = [];
+  let part = 'main';
+  for (const l of lines){
+    if (/^#/.test(l)){ d.name = l.replace(/^#+\s*/, ''); continue; }
+    if (/^[【\[]?(エボルヴ|EVOLVE)/i.test(l)){ part = 'evo'; continue; }
+    if (/^[【\[]?(メイン)/.test(l)){ part = 'main'; continue; }
+    const m = z2h(l).match(/^(\d+)\s*[枚×xX]?\s*(.+?)$/) || z2h(l).match(/^(.+?)\s*[×xX]\s*(\d+)$/)?.slice(0).reverse();
+    let n = 1, name = l;
+    if (m){ const a = z2h(l).match(/^(\d+)\s*[枚×xX]?\s*(.+?)$/); if (a){ n = +a[1]; name = a[2]; } else { const b = z2h(l).match(/^(.+?)\s*[×xX]\s*(\d+)$/); name = b[1]; n = +b[2]; } }
+    name = name.trim();
+    const k = (part === 'evo' ? 'E:' : 'M:') + name;
+    if (!libGet(k)){ miss.push(name); continue; }
+    d[part][k] = (d[part][k] || 0) + n;
+  }
+  if (!Object.keys(d.main).length && !Object.keys(d.evo).length){ $('deckImportMsg').textContent = '読み込めるカードがなかった。カード名がカードプールと同じか確かめて。'; return; }
+  d.name = d.name || `デッキ${SAVED.length + 1}`;
+  const cs = [...Object.keys(d.main), ...Object.keys(d.evo)].map(libGet);
+  d.cls = cs.every(c => titleOf(c)) && cs.some(c => !realCls(c) || realCls(c) === 'ニュートラル' || new Set(cs.map(realCls).filter(x => x && x !== 'ニュートラル')).size > 1) ? titleOf(cs[0]) : (cs.map(realCls).find(x => x && x !== 'ニュートラル') || '');
+  SAVED.push(d); DK = d; pendingDel = null; persist(); renderSetup();
+  $('deckImportText').value = '';
+  $('deckImportMsg').textContent = `「${d.name}」を作った。` + (miss.length ? `カードプールになかったカード：${miss.join('、')}` : '');
+};
+$('btnDupDeck').onclick = () => {
+  const d = JSON.parse(JSON.stringify(DK)); d.id = newId(); d.name = `${DK.name || 'デッキ'}のコピー`;
+  SAVED.push(d); DK = d; pendingDel = null; persist(); renderSetup();
+};
+$('btnDelDeck').onclick = () => {
+  if (pendingDel !== 'deck'){ pendingDel = 'deck'; renderDeckSel(); return; }
+  SAVED = SAVED.filter(d => d !== DK); DK = null; pendingDel = null; ensureDecks(); persist(); renderSetup();
+};
+$('btnClearSample').onclick = () => {
+  const ks = LIB.filter(c => c.sample).map(keyOf);
+  LIB = LIB.filter(c => !c.sample); ks.forEach(k => { delete DK.main[k]; delete DK.evo[k]; });
+  persist(); renderSetup();
+};
+$('deckName').addEventListener('input', e => { DK.name = e.target.value; persist(); renderDeckSel(); });
+$('poolQ').addEventListener('input', renderSetup);
+$('poolType').addEventListener('change', renderSetup);
+$('poolAttr').addEventListener('change', renderSetup);
+$('poolShowToken').addEventListener('change', renderSetup);
+$('poolOnlyCls').addEventListener('change', renderSetup);
+$('btnExport').onclick = () => {
+  const t = exportCards();
+  $('exportText').value = t || '（書き出せるカードがない。サンプルは含めない）';
+  $('exportBox').hidden = false;
+};
+$('btnCopyExport').onclick = () => {
+  const ta = $('exportText'), btn = $('btnCopyExport');
+  const done = () => { btn.textContent = 'コピーした'; setTimeout(() => { btn.textContent = 'コピー'; }, 1500); };
+  const fallback = () => { ta.focus(); ta.select(); btn.textContent = '選択したのでコピーして'; };
+  try { navigator.clipboard.writeText(ta.value).then(done, fallback); } catch (e){ fallback(); }
+};
+$('impCls').addEventListener('change', renderSetup);
+$('deckCls').addEventListener('change', e => { DK.cls = e.target.value; persist(); renderSetup(); });
+$('btnSetCls').onclick = () => { const v = $('impCls').value; LIB.forEach(c => { if (!c.cls) c.cls = v; }); persist(); renderSetup(); };
+$('impCls').innerHTML = CLASSES.map(c => `<option>${c}</option>`).join('');
+$('deckCls').innerHTML = '<option value="">未選択</option>' + CLASSES.filter(c => c !== 'ニュートラル').map(c => `<option value="${c}">${TITLES.includes(c) ? `${c}（タイトルだけ）` : c}</option>`).join('');
+$('pool').addEventListener('change', e => {
+  const s = e.target.closest('.clsSel'); if (!s) return;
+  const c = libGet(s.dataset.clsk); if (!c) return;
+  c.cls = s.value || TITLES.find(t => titleOf(c) === t) || '';
+  LIB.filter(x => x.name === c.name).forEach(x => { x.cls = c.cls; });
+  persist(); renderSetup();
+});
+$('pool').addEventListener('click', e => { const p = e.target.closest('.ptext'); if (p) p.classList.toggle('open'); });
+
+/* ---------- オンライン対戦（PeerJSで2人をつなぐ） ----------
+   自分の場は自分が管理する。相手の場は、相手から届く「状態」をそのまま映す。
+   相手のフォロワーへのダメージ・破壊・アクトや、相手リーダーへのダメージは、差分を相手に送って、相手側で処理してもらう。 */
+const STANDALONE = !!document.querySelector('meta[name="sve-standalone"]');
+const NET = {on: false, role: null, conn: null, peer: null, tx: null, base: null, applying: false, queue: [], inbox: [], ready: {me: false, opp: false}, lastSnap: '', timer: null, status: ''};
+const RU = 1000000; // 相手のカード番号に足して、自分の番号とぶつからないようにする
+function netStatus(t){ NET.status = t; const el = $('netStatus'); if (el) el.textContent = t; }
+function netSend(o){ try { if (NET.tx) NET.tx(o); } catch (e){ netStatus('送信できなかった：' + e.message); } }
+function netBaseFromMirror(){
+  const f = {}; (S.oppF || []).filter(o => o.ru != null).forEach(o => { f[o.ru] = {dmg: o.dmg || 0, atk: o.atk, def: o.def, rest: !!o.rest, kw: [...(o.kw || [])]}; });
+  return {f, life: S.opp};
+}
+function netDiff(){
+  if (!S || !NET.base) return [];
+  const ev = [], cur = new Map((S.oppF || []).filter(o => o.ru != null).map(o => [o.ru, o])), gone = S._gone || {};
+  for (const [k, b] of Object.entries(NET.base.f)){
+    const ru = +k, o = cur.get(ru);
+    if (!o){
+      const how = gone[ru] || 'destroy';
+      if (String(how).startsWith('dmg:')) ev.push({t: 'dmg', ru, n: +String(how).slice(4) - b.dmg});
+      else ev.push({t: 'gone', ru, how});
+      continue;
+    }
+    if ((o.dmg || 0) !== b.dmg) ev.push({t: 'dmg', ru, n: (o.dmg || 0) - b.dmg});
+    if (o.atk !== b.atk) ev.push({t: 'atk', ru, d: o.atk - b.atk});
+    if (o.def !== b.def) ev.push({t: 'def', ru, d: o.def - b.def});
+    if (o.rest && !b.rest) ev.push({t: 'act', ru});
+    if (!o.rest && b.rest) ev.push({t: 'stand', ru});
+    const add = (o.kw || []).filter(x => !b.kw.includes(x)); if (add.length) ev.push({t: 'kw', ru, add});
+  }
+  if (S.opp !== NET.base.life) ev.push({t: 'life', d: S.opp - NET.base.life});
+  NET.base = netBaseFromMirror(); S._gone = {};
+  return ev;
+}
+function netSnap(){
+  const KWS = ['守護', '威圧', 'オーラ', '指定攻撃', '必殺', '疾走', '突進', 'ドレイン'];
+  const isF = c => TYPE(baseOf(c).type) === 'follower' || piloted(c);
+  return {t: 'snap', life: S.life, pp: S.pp, maxPP: S.maxPP, ep: S.ep, sep: S.sep ?? 0, hand: S.hand.length, deck: S.deck.length, ex: S.ex.length, turn: S.turn, phase: S.phase, over: S.over,
+    f: S.field.filter(isF).map(c => ({ru: c.u, name: dispName(c), atk: atkOf(c) || 0, def: defOf(c) || 1, dmg: c.dmg || 0, rest: !!c.rest, kw: KWS.filter(k => hasKw(c, k)), cost: D(c).cost, text: baseOf(c).text, type: baseOf(c).type, lb: c.lb || 0, evo: !!c.evo})),
+    am: S.field.filter(c => !isF(c)).map(c => baseOf(c).name),
+    grave: S.grave.map(c => { const d = D(c); return {name: d.name, type: d.type, cost: d.cost, atk: d.atk, def: d.def, text: d.text}; })};
+}
+/* 差分・ログ・状態を相手に送る */
+function netFlush(){
+  if (!S || !S.pvp || !NET.on) return;
+  clearTimeout(NET.timer); NET.timer = null;
+  const ev = netDiff(), logs = NET.queue.splice(0);
+  if (ev.length || logs.length) netSend({t: 'ev', ev, logs});
+  const snap = netSnap(), js = JSON.stringify(snap);
+  if (js !== NET.lastSnap){ NET.lastSnap = js; netSend(snap); }
+}
+function netSchedule(){ if (NET.applying) return; clearTimeout(NET.timer); NET.timer = setTimeout(netFlush, 120); }
+function netOnSnap(s){
+  if (!S || !S.pvp) return;
+  netFlush(); // まだ送ってない差分を先に送る
+  S.oppF = s.f.map(x => ({u: RU + x.ru, ru: x.ru, name: x.name, atk: x.atk, def: x.def, dmg: x.dmg, rest: x.rest, kw: x.kw, cost: x.cost, text: x.text, type: x.type, lb: x.lb, evo: x.evo}));
+  S.opp = s.life; S.oppStat = {hand: s.hand, deck: s.deck, pp: s.pp, maxPP: s.maxPP, ep: s.ep, sep: s.sep, ex: s.ex, turn: s.turn, phase: s.phase, am: s.am};
+  S.oppGraveRemote = s.grave;
+  NET.base = netBaseFromMirror();
+  if (sel != null && sel >= RU && !findOpp(sel)) sel = null;
+  NET.applying = true; render(); NET.applying = false;
+}
+/* 相手からの差分を自分の場に反映する */
+async function netApply(msg){
+  if (!S || !S.pvp) return;
+  NET.applying = true; const was = S.cpuNow; S.cpuNow = true;
+  (msg.logs || []).forEach(m => S.log.push({t: '相手', m}));
+  for (const e of msg.ev || []){
+    if (e.t === 'life'){ S.life += e.d; S.log.push({t: '相手', m: `自分のライフ${e.d > 0 ? '+' : ''}${e.d} → ${S.life}`}); continue; }
+    if (e.t === 'discard'){
+      for (let i = 0; i < e.n && S.hand.length; i++){
+        let u;
+        if (e.random) u = S.hand[Math.floor(Math.random() * S.hand.length)].u;
+        else u = await pickCards(S.hand, null, {title: `相手の効果：手札を1枚捨てる（${i + 1}/${e.n}）`, skip: null, btn: '捨てる'});
+        if (u == null) break;
+        await discard(u, null);
+      }
+      continue;
+    }
+    const f = find(e.ru); if (!f || f.z !== 'field') continue;
+    const c = f.c, b = baseOf(c);
+    if (e.t === 'dmg') await myDamage(c, e.n);
+    else if (e.t === 'gone'){
+      if (e.how === 'banish'){ move(c.u, 'banish'); log(`${b.name}は消滅させられた`); }
+      else if (e.how === 'hand'){ move(c.u, 'hand'); log(`${b.name}は手札に戻された`); }
+      else { move(c.u, 'grave'); log(`${b.name}は破壊された`); await trigger(b, 'ラストワード', {self: c.u}); if (TYPE(b.type) === 'follower') await onDie(b); }
+    }
+    else if (e.t === 'atk'){ c.am += e.d; log(`${b.name}の攻撃${e.d > 0 ? '+' : ''}${e.d}`); }
+    else if (e.t === 'def'){ c.dm += e.d; log(`${b.name}の体力${e.d > 0 ? '+' : ''}${e.d}`); if (myHp(c) <= 0) await myDamage(c, 0); }
+    else if (e.t === 'act'){ log(`${b.name}はアクトさせられた`); await setRest(c); }
+    else if (e.t === 'stand') c.rest = false;
+    else if (e.t === 'kw') c.kw = [...new Set([...(c.kw || []), ...e.add.map(k => `【${k}】`)])];
+  }
+  S.cpuNow = was; NET.applying = false;
+  render(); netFlush();
+}
+async function netRecv(m){
+  if (!m || !m.t) return;
+  if (m.t === 'hello'){ NET.oppName = m.name || ''; netStatus(`つながった${m.name ? `（相手：${m.name}）` : ''}。${NET.role === 'host' ? 'デッキを選んで「オンライン対戦を開始」を押して。' : '相手が開始するのを待ってる。デッキを選んでおいて。'}`); if (!S) renderSetup(); return; }
+  if (m.t === 'begin'){
+    if (NET.role !== 'guest') return;
+    $('ordFirst').checked = !m.hostFirst; $('ordSecond').checked = !!m.hostFirst;
+    if (m.hand) $('optHand').value = m.hand;
+    closeModal(); NET.ready = {me: false, opp: false}; NET.lastSnap = ''; NET.base = null;
+    start();
+    if (!S){ netSend({t: 'nodeck'}); return; }
+    return;
+  }
+  if (m.t === 'nodeck'){ netStatus('相手のデッキが空だった。相手にデッキを選んでもらって、もう一度開始して。'); return; }
+  NET.inbox.push(m);
+}
+/* 選ぶ画面が開いてないときに、届いたものを順番に処理する */
+async function netPump(){
+  if (NET.pumping || !NET.inbox.length || promptResolve) return;
+  NET.pumping = true;
+  try {
+    while (NET.inbox.length && !promptResolve){
+      const m = NET.inbox.shift();
+      if (m.t === 'snap') netOnSnap(m);
+      else if (m.t === 'ev') await netApply(m);
+      else if (m.t === 'ready'){ NET.ready.opp = true; netMaybeBegin(); }
+      else if (m.t === 'turn'){ if (S && S.pvp && !S.over){ log('相手のターンが終わった'); S.phase = 'play'; turnStart(); history = []; } }
+    }
+  } finally { NET.pumping = false; }
+}
+setInterval(netPump, 100);
+function netMaybeBegin(){
+  if (!S || !S.pvp || !NET.ready.me || !NET.ready.opp) return;
+  if (S.first && S.turn === 0){ log('2人ともキープした。ゲーム開始'); S.phase = 'play'; turnStart(); history = []; }
+  else if (!S.first){ log('2人ともキープした。相手の先攻'); render(); }
+}
+function netBind(c, role){
+  NET.conn = c; NET.role = role;
+  NET.tx = o => { if (c.open) c.send(o); };
+  c.on('open', () => { NET.on = true; netSend({t: 'hello', name: ($('netName') && $('netName').value.trim()) || ''}); netStatus('つながった'); if (!S) renderSetup(); });
+  c.on('data', d => netRecv(typeof d === 'string' ? JSON.parse(d) : d));
+  c.on('close', () => { NET.on = false; NET.tx = null; netStatus('相手との接続が切れた'); if (S) render(); else renderSetup(); });
+  c.on('error', e => netStatus('エラー：' + (e.type || e.message)));
+}
+function netNewPeer(id){
+  if (typeof Peer === 'undefined'){ netStatus('対戦の仕組みが読み込めてない。ネットにつながってるか確かめて、ページを開き直して。'); return null; }
+  if (NET.peer){ try { NET.peer.destroy(); } catch (_){} }
+  NET.peer = id ? new Peer(id) : new Peer();
+  NET.peer.on('error', e => netStatus(e.type === 'peer-unavailable' ? 'その合言葉の部屋が見つからない。合言葉を確かめて。' : e.type === 'unavailable-id' ? 'その合言葉はもう使われてる。もう一度「部屋を作る」を押して。' : 'エラー：' + e.type));
+  return NET.peer;
+}
+function netHost(){
+  const code = Array.from({length: 5}, () => 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'[Math.floor(Math.random() * 32)]).join('');
+  const p = netNewPeer('svesolo-' + code); if (!p) return;
+  netStatus('部屋を作ってる…');
+  p.on('open', () => netStatus(`部屋の合言葉：${code}　友だちに伝えて、つながるのを待って。`));
+  p.on('connection', c => { if (NET.conn && NET.conn.open){ c.close(); return; } netBind(c, 'host'); });
+}
+function netJoin(code){
+  code = String(code || '').trim().toUpperCase(); if (!code){ netStatus('合言葉を入れて。'); return; }
+  const p = netNewPeer(null); if (!p) return;
+  netStatus('つないでる…');
+  p.on('open', () => netBind(p.connect('svesolo-' + code, {reliable: true, serialization: 'json'}), 'guest'));
+}
+function netClose(){ try { NET.conn && NET.conn.close(); } catch (_){} try { NET.peer && NET.peer.destroy(); } catch (_){} NET.on = false; NET.tx = null; NET.conn = null; NET.peer = null; netStatus('切断した'); renderSetup(); }
+function netStartGame(){
+  if (NET.role !== 'host') return;
+  if (!DK || !Object.keys(DK.main || {}).length){ $('startMsg').textContent = 'メインデッキにカードが入ってない。'; return; }
+  const hostFirst = $('ordFirst').checked;
+  NET.ready = {me: false, opp: false}; NET.lastSnap = ''; NET.base = null; NET.inbox = [];
+  netSend({t: 'begin', hostFirst, hand: $('optHand').value});
+  start();
+}
+function netRenderSetup(){
+  const box = $('netBox'); if (!box) return;
+  box.hidden = !STANDALONE;
+  if (!STANDALONE) return;
+  $('btnHost').disabled = NET.on; $('btnJoin').disabled = NET.on; $('btnNetClose').hidden = !NET.on && !NET.peer;
+  $('oppDeckSel').disabled = NET.on;
+  $('btnStart').disabled = NET.on && NET.role === 'guest';
+  $('btnStart').textContent = NET.on ? (NET.role === 'host' ? 'オンライン対戦を開始' : '相手が開始するのを待ってる') : 'このデッキで開始';
+  $('netStatus').textContent = NET.status;
+}
+
+$('btnHost').onclick = netHost;
+$('btnJoin').onclick = () => netJoin($('netCode').value);
+$('btnNetClose').onclick = netClose;
+(function init(){
+  LIB = LS.get('evolveSolo.lib', null);
+  DK = LS.get('evolveSolo.deck', {name: '', main: {}, evo: {}});
+  SAVED = LS.get('evolveSolo.saved', []);
+  CPUMEM = LS.get('evolveSolo.cpu', {}) || {};
+  if (!Array.isArray(LIB)){
+    // 初回：以前貼ったデッキがあればそれを、なければ架空サンプルを取り込む
+    LIB = [];
+    let om = null, oe = null;
+    try { om = localStorage.getItem('evolveSolo.main'); oe = localStorage.getItem('evolveSolo.evo'); } catch(_){}
+    const sample = !om;
+    const sc = sample ? 'ニュートラル' : '';
+    const a = importCards(om || SAMPLE_MAIN, false, sample, sc), b = importCards(oe ?? SAMPLE_EVO, true, sample, sc);
+    DK = {name: sample ? 'サンプル' : '', main: {}, evo: {}};
+    a.defs.forEach(d => { const k = 'M:' + d.name; DK.main[k] = (DK.main[k] || 0) + d.n; });
+    b.defs.forEach(d => { const k = 'E:' + d.name; DK.evo[k] = (DK.evo[k] || 0) + d.n; });
+    persist();
+  }
+  DK.main = DK.main || {}; DK.evo = DK.evo || {};
+  ensureDecks();
+  LIB.forEach(c => { c.text = fixText(c.text); if (c.sample && !c.cls) c.cls = 'ニュートラル'; });
+  persist();
+  $('importBox').open = !LIB.length || LIB.every(c => c.sample);
+  render();
+  setCloudMsg();
+  cloudInit();
+  if (STANDALONE) loadStarter();
+})();
+/* アプリ版：公開リポジトリの cards.txt と decks.json を読み込む（カードは上書き追加、デッキは一度だけ追加） */
+/* アプリ版：カードとデッキは「非公開のGist」から配る。リポジトリにはカードの文章を置かない */
+function feedIdOf(v){ const m = String(v || '').trim().match(/([0-9a-f]{20,40})(?:[^0-9a-f]|$)/i); return m ? m[1] : ''; }
+function feedMsg(t){ const e = $('feedStatus'); if (e) e.textContent = t; }
+async function fetchFeed(id){
+  const r = await fetch(`https://api.github.com/gists/${id}`, {cache: 'no-cache', headers: {Accept: 'application/vnd.github+json'}});
+  if (!r.ok) throw new Error(r.status === 404 ? '配信コードが見つからない' : `読み込めなかった（${r.status}）`);
+  const g = await r.json(), files = g.files || {};
+  const get = async n => { const f = files[n]; if (!f) return null; if (!f.truncated) return f.content; const x = await fetch(f.raw_url, {cache: 'no-cache'}); return x.ok ? x.text() : null; };
+  return {cards: await get('cards.txt'), decks: await get('decks.json')};
+}
+async function loadStarter(){
+  // ?g=配信コード 付きのリンクで開いたら覚える
+  try {
+    const u = new URL(location.href), g = feedIdOf(u.searchParams.get('g'));
+    if (g){ LS.set('evolveSolo.feed', g); u.searchParams.delete('g'); window.history.replaceState(null, '', u.pathname + (u.search || '') + u.hash); }
+  } catch (_){}
+  const id = LS.get('evolveSolo.feed', '');
+  if ($('feedBox')){ $('feedBox').hidden = false; $('feedId').value = id; }
+  if (!id){ feedMsg('配信コードがまだ入ってない。'); return; }
+  feedMsg('読み込み中…');
+  try {
+    const {cards, decks} = await fetchFeed(id);
+    let add = 0, upd = 0;
+    if (cards){ const r = importCards(cards, false, false, ''); add = r.add; upd = r.upd; }
+    if (decks){
+      const ds = JSON.parse(decks), done = LS.get('evolveSolo.starterDecks', []);
+      (Array.isArray(ds) ? ds : []).forEach(d => {
+        if (!d || !d.name || done.includes(d.name)) return;
+        done.push(d.name);
+        if (!SAVED.some(x => x.name === d.name)) SAVED.push({id: newId(), name: d.name, cls: d.cls || '', main: d.main || {}, evo: d.evo || {}});
+      });
+      LS.set('evolveSolo.starterDecks', done);
+    }
+    // 本物のカードが入ったら、架空サンプルのカードとデッキは片付ける
+    if (LIB.some(c => !c.sample) && LIB.some(c => c.sample)){
+      LIB = LIB.filter(c => !c.sample);
+      const empty = d => !Object.keys(d.main || {}).length && !Object.keys(d.evo || {}).length;
+      SAVED = SAVED.filter(d => !(d.name === 'サンプル' || empty(d)));
+      if (!SAVED.some(d => d.id === DK.id)) DK = SAVED[0] || {name: '', main: {}, evo: {}};
+      ensureDecks();
+    }
+    persist(); if (!S) render();
+    feedMsg(`最新版にそろえた（カード${LIB.filter(c => !c.sample).length}種類${add ? `・新しく${add}種類` : ''}）`);
+  } catch (e){ feedMsg('⚠ ' + (e.message || '読み込めなかった') + '。前回までのカードはそのまま使える。'); }
+}
+if ($('btnFeed')) $('btnFeed').onclick = () => {
+  const id = feedIdOf($('feedId').value);
+  if (!id){ feedMsg('⚠ 配信コードの形がおかしい。'); return; }
+  LS.set('evolveSolo.feed', id); loadStarter();
+};
+</script>
+
+<p class="fmt" style="max-width:720px;margin:24px auto;padding:0 16px;text-align:center;font-size:11px">非公式のファンツール（営利目的なし・身内用）。公式とは関係ありません。Shadowverse EVOLVE：© Cygames, Inc. ©Bushiroad。カード情報の転載・再配布は禁止。</p>
+<script>
+if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(()=>{});
+</script>
+</body>
+</html>
