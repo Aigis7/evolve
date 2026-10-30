@@ -80,7 +80,7 @@ header.top{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-
 .card.t-spell{border-top-color:var(--spell)} .card.t-amulet{border-top-color:var(--amulet)} .card.t-evo{border-top-color:var(--evo)}
 .card.sel{outline:2px solid var(--accent);outline-offset:1px}
 .card.rested{background:var(--rest)}
-.card.rested .cname::after{content:"レスト";margin-left:4px;font-size:10px;color:var(--muted);font-weight:700}
+.card.rested .cname::after{content:"アクト";margin-left:4px;font-size:10px;color:var(--muted);font-weight:700}
 .card .row1{display:flex;gap:6px;align-items:flex-start}
 .cost{font-family:var(--f-num);font-weight:700;font-size:13px;min-width:22px;height:22px;border-radius:50%;display:grid;place-items:center;
   background:var(--follower);color:var(--surface);flex:0 0 auto}
@@ -1090,6 +1090,16 @@ async function turnEnd(){
     if (!find(c.u)) continue;
     await trigger(baseOf(c), 'エンドフェイズ', {self: c.u});
     for (const g of (c.grant || [])){ const m = z2h(g).match(/自分のエンドフェイズが来たとき、(.+)/); if (m && find(c.u)) await runSegment(m[1], `${dispName(c)}（付与された能力）`, baseOf(c), {self: c.u}); }
+  }
+  // スタンド状態の守護フォロワーを、アクトにして守護として構えるか聞く
+  for (;;){
+    const gs = S.field.filter(c => find(c.u) && !c.rest && hasKw(c, '守護') && !(TYPE(baseOf(c).type) === 'amulet' && !piloted(c)));
+    if (!gs.length || S.over) break;
+    const v = await ask({title: '守護フォロワーをアクトにする？', note: '守護はアクト状態のときに相手の攻撃を引き受ける。アクトにするフォロワーを選んで。',
+      items: gs.map(c => ({label: `${dispName(c)} ${atkOf(c)}/${myHp(c)}`, value: c.u, btn: 'アクトにする', primary: true})), skip: gs.length > 1 ? 'これで終わり' : 'アクトにしない'});
+    if (v == null) break;
+    const c = find(v) && find(v).c; if (!c) break;
+    log(`${dispName(c)}をアクト（守護）`); await setRest(c);
   }
   while (S.hand.length > 7){
     const u = await pickCards(S.hand, null, {title: `手札を${S.hand.length - 7}枚捨てる`, note: '手札の上限は7枚', skip: 'あとで自分で捨てる', btn: '捨てる'});
@@ -2469,7 +2479,7 @@ async function act(a, u, opt){
     case 'devolve': if (c.evo){ const e = c.evo; c.evo = null; S.evoUsed.push(e); log(`${name}の進化を解除`); } break;
     default: history.pop();
   }
-  // スマホでは、カードを動かしたら操作パネルを閉じる（数値の調整とレストは開いたまま）
+  // スマホでは、カードを動かしたら操作パネルを閉じる（数値の調整とアクトは開いたまま）
   if (window.matchMedia('(max-width:700px)').matches && !/^(am|dm|cnt|dmg)[+-]$|^rest$|^unsick$/.test(a)) sel = null;
   closeModal(); render();
 }
@@ -2587,7 +2597,7 @@ function detailHTML(){
       if (gd) atkNote += '<div class="dmeta">相手にアクト状態の守護がいるので、守護にしか攻撃できない。</div>';
       else if (st.f && !ts) atkNote += '<div class="dmeta">攻撃できる相手のフォロワーがいない（アクト状態のフォロワーにだけ攻撃できる）。</div>';
     }
-    acts.push(B('rest', c.rest?'スタンド':'レスト'));
+    acts.push(B('rest', c.rest?'スタンドにする':'アクトにする'));
     if (!isAmu && st.why) atkNote += `<div class="dmeta">${esc(st.why)}<button type="button" class="linkbtn" data-act="unsick" data-u="${c.u}">効果で攻撃できる（制限を外す）</button></div>`;
     if (!d.evo) acts.push(c.evo ? B('devolve','進化を解除') : `<button type="button" data-evolve="${c.u}">進化</button>`);
     abilitiesOf(b).forEach((t, i) => { const cp = t.split('：')[0]; acts.push(B(`abil:${i}`, `起動（${esc(cp.length > 14 ? cp.slice(0, 14) + '…' : cp)}）`, '', (/1ターンに1回/.test(t) && c.actT && c.actT[i] === S.turn))); });
