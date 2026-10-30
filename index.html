@@ -399,6 +399,28 @@ input,select,textarea{color-scheme:dark}
 header.top{padding-bottom:4px;border-bottom:1px solid rgba(224,179,65,.2)}
 header.top h1{font-size:20px}
 
+
+/* サイコロの演出 */
+.dicefx{position:fixed;inset:0;z-index:60;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:18px;
+  background:radial-gradient(60% 45% at 50% 45%,rgba(224,179,65,.18),rgba(8,14,19,.78));animation:dIn .18s ease-out}
+.dicefx.out{opacity:0;transition:opacity .2s}
+@keyframes dIn{from{opacity:0}to{opacity:1}}
+.dstage{position:relative;width:110px;height:110px;perspective:600px}
+.dshadow{position:absolute;left:12px;right:12px;bottom:-26px;height:16px;border-radius:50%;background:rgba(0,0,0,.45);filter:blur(6px)}
+.dcube{position:absolute;inset:0;transform-style:preserve-3d}
+.dface{position:absolute;inset:0;display:grid;grid-template-columns:repeat(3,1fr);grid-template-rows:repeat(3,1fr);padding:14px;gap:4px;
+  border-radius:18px;background:radial-gradient(circle at 30% 25%,#ffffff,#efe9dc 70%,#d9cfba);box-shadow:inset 0 0 0 2px rgba(0,0,0,.06),inset 0 -6px 12px rgba(0,0,0,.12);backface-visibility:hidden}
+.dface i{display:block;margin:auto;width:70%;aspect-ratio:1;border-radius:50%}
+.dface i.on{background:radial-gradient(circle at 35% 30%,#4a4a4a,#111 70%)}
+.dface i.red{background:radial-gradient(circle at 35% 30%,#ff7a6a,#b3121e 70%);width:95%}
+.f1{transform:translateZ(55px)} .f6{transform:rotateY(180deg) translateZ(55px)}
+.f2{transform:rotateY(90deg) translateZ(55px)} .f5{transform:rotateY(-90deg) translateZ(55px)}
+.f3{transform:rotateX(90deg) translateZ(55px)} .f4{transform:rotateX(-90deg) translateZ(55px)}
+.dres{display:flex;flex-direction:column;align-items:center;gap:2px;opacity:0;transform:translateY(6px);transition:opacity .25s,transform .25s;margin-top:14px}
+.dicefx.landed .dres{opacity:1;transform:none}
+.dres b{font-family:var(--f-display);font-weight:400;font-size:54px;line-height:1;color:#ffe6a0;text-shadow:0 0 18px rgba(224,179,65,.7),0 3px 0 rgba(0,0,0,.4)}
+.dres span{font-size:13px;color:#d6e2e8;letter-spacing:.06em}
+.dtap{font-size:11px;color:rgba(255,255,255,.45)}
 /* ドラッグ */
 #gameView .card[data-u]{-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
 #field .card,#ex .card{touch-action:none}
@@ -1476,9 +1498,42 @@ async function runGrants(c, kind){
   }
 }
 /* サイコロ */
+
+/* ---------- サイコロの演出 ---------- */
+const PIPS = {1: [5], 2: [3, 7], 3: [3, 5, 7], 4: [1, 3, 7, 9], 5: [1, 3, 5, 7, 9], 6: [1, 3, 4, 6, 7, 9]};
+const FACE_ROT = {1: [0, 0], 2: [0, -90], 3: [-90, 0], 4: [90, 0], 5: [0, 90], 6: [0, 180]};
+let diceBusy = Promise.resolve();
+function diceFx(v, name, who){
+  const run = () => new Promise(res => {
+    const box = document.createElement('div'); box.className = 'dicefx';
+    const face = n => `<div class="dface f${n}">${Array.from({length: 9}, (_, i) => `<i class="${PIPS[n].includes(i + 1) ? (n === 1 ? 'on red' : 'on') : ''}"></i>`).join('')}</div>`;
+    box.innerHTML = `<div class="dstage"><div class="dshadow"></div><div class="dcube">${[1, 2, 3, 4, 5, 6].map(face).join('')}</div></div>
+      <div class="dres"><b>${v}</b><span>${esc(who ? who + 'のサイコロ' : 'サイコロ')}${name ? '・' + esc(name) : ''}</span></div><div class="dtap">タップで閉じる</div>`;
+    document.body.appendChild(box);
+    const cube = box.querySelector('.dcube'), [fx, fy] = FACE_ROT[v];
+    const rx = fx + 360 * (2 + Math.floor(Math.random() * 2)), ry = fy + 360 * (2 + Math.floor(Math.random() * 2));
+    const still = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    const t0 = Math.random() * 90, t1 = Math.random() * 90;
+    const anim = cube.animate(still ? [{transform: `rotateX(${fx}deg) rotateY(${fy}deg)`}, {transform: `rotateX(${fx}deg) rotateY(${fy}deg)`}] : [
+      {transform: `translateY(-140px) rotateX(${t0}deg) rotateY(${t1}deg)`, offset: 0},
+      {transform: `translateY(0) rotateX(${rx * .6}deg) rotateY(${ry * .6}deg)`, offset: .55, easing: 'ease-out'},
+      {transform: `translateY(-36px) rotateX(${rx * .85}deg) rotateY(${ry * .85}deg)`, offset: .75, easing: 'ease-in'},
+      {transform: `translateY(0) rotateX(${rx}deg) rotateY(${ry}deg)`, offset: 1}
+    ], {duration: still ? 200 : 1300, easing: 'cubic-bezier(.3,.7,.3,1)', fill: 'forwards'});
+    let done = false;
+    const close = () => { if (done) return; done = true; box.classList.add('out'); setTimeout(() => { box.remove(); res(); }, 220); };
+    anim.onfinish = () => { box.classList.add('landed'); setTimeout(close, 900); };
+    box.addEventListener('click', () => { if (box.classList.contains('landed')) close(); else { anim.finish(); } });
+  });
+  diceBusy = diceBusy.then(run, run);
+  return diceBusy;
+}
 async function rollDie(src){
   const v = 1 + Math.floor(Math.random() * 6);
   if (S.rollT !== S.turn){ S.rolls = []; S.rollT = S.turn; }
+  const who = S.cpuNow && !S.pvp ? '相手' : '';
+  if (S.pvp && NET.on && !NET.applying) netSend({t: 'die', v, name: src ? src.name : ''});
+  await diceFx(v, src ? src.name : '', who);
   S.rolls.push(v); log(`🎲 サイコロ：${v}${src ? `（${src.name}）` : ''}`);
   if (!autoOn()) return v;
   for (const c of [...S.field]){
@@ -2943,6 +2998,7 @@ async function netApply(msg){
 }
 async function netRecv(m){
   if (!m || !m.t) return;
+  if (m.t === 'die'){ diceFx(m.v, m.name || '', '相手'); return; }
   if (m.t === 'hello'){ NET.oppName = m.name || ''; netStatus(`つながった${m.name ? `（相手：${m.name}）` : ''}。${NET.role === 'host' ? 'デッキを選んで「オンライン対戦を開始」を押して。' : '相手が開始するのを待ってる。デッキを選んでおいて。'}`); if (!S) renderSetup(); return; }
   if (m.t === 'begin'){
     if (NET.role !== 'guest') return;
