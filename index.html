@@ -1471,7 +1471,8 @@ function makeFilter(x, src){
   const tribe = mm ? mm[1] : '', kind = mm ? mm[2] : 'カード';
   return d => {
     if (ex && d.name === ex) return false;
-    const cn = Number(d.cost) || 0;
+    // 進化後のカードにはコストがないので、進化前（同じ名前）の元のコストで見る
+    const cn = (d.cost === '' || d.cost == null) && d.evo ? (costNum(d) === 99 ? 0 : costNum(d)) : (Number(d.cost) || 0);
     if (costMax != null && cn > costMax) return false;
     if (costEq != null && cn !== costEq) return false;
     if (names && !names.includes(d.name)) return false;
