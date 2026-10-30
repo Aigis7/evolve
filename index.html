@@ -297,6 +297,12 @@ details.panel > summary{cursor:pointer}
 .tfeed{margin:0;text-align:center;font-size:12px;color:#a9bcc7;min-height:1.4em}
 .tlegal{position:relative;margin:0;max-width:440px;text-align:center;font-size:10.5px;color:#6f8593;line-height:1.5}
 body.at-title{overflow:hidden}
+
+/* 設定画面のモード：デッキを組む／対戦の準備 */
+#setupView.mode-deck #battleOpts{display:none}
+#setupView.mode-battle .setcol,#setupView.mode-battle .deckonly,#setupView.mode-battle .cpuonly{display:none !important}
+#setupView.mode-battle{grid-template-columns:minmax(0,520px);justify-content:center}
+#setupView.mode-battle .deckpanel{position:static}
 </style>
 <script src="peerjs.min.js"></script>
 </head>
@@ -313,7 +319,7 @@ body.at-title{overflow:hidden}
       <button type="button" class="tbtn main" data-go="online"><svg viewBox="0 0 24 24"><circle cx="8" cy="9" r="3"/><circle cx="16" cy="9" r="3"/><path d="M3 19c.8-3 2.8-4.5 5-4.5s4.2 1.5 5 4.5M11 19c.8-3 2.8-4.5 5-4.5s4.2 1.5 5 4.5"/></svg><span class="tt"><b>友達と対戦</b><small>合言葉でつないでオンライン対戦</small></span></button>
       <button type="button" class="tbtn" data-go="cpu"><svg viewBox="0 0 24 24"><rect x="5" y="7" width="14" height="11" rx="3"/><path d="M12 7V4M9 12h.01M15 12h.01M9.5 15h5M3 12v2M21 12v2"/></svg><b>CPUと対戦</b><small>結果から動きを学ぶCPU</small></button>
       <button type="button" class="tbtn" data-go="solo"><svg viewBox="0 0 24 24"><rect x="5" y="3" width="11" height="15" rx="2"/><path d="M9 21h9a2 2 0 0 0 2-2V7"/></svg><b>ひとりで回す</b><small>相手なしで動きを試す</small></button>
-      <div class="tsubrow" id="tCpuRow" hidden><select id="tOpp" aria-label="CPUのデッキ"></select><button type="button" id="tCpuGo">対戦開始</button></div>
+      <div class="tsubrow" id="tCpuRow" hidden style="flex-wrap:wrap"><select id="tOpp" aria-label="CPUのデッキ" style="flex:1 1 100%"></select><select id="tOrder" aria-label="先攻か後攻" style="flex:none;width:auto"><option value="first">先攻</option><option value="second">後攻</option></select><button type="button" id="tCpuGo">対戦開始</button></div>
       <button type="button" class="tbtn" data-go="deck" style="grid-column:1/-1;min-height:0;flex-direction:row;align-items:center;gap:12px"><svg viewBox="0 0 24 24"><rect x="4" y="5" width="10" height="14" rx="2"/><path d="M17 8l3 1-3 10-3-1M9 9v6M6 12h6"/></svg><b>デッキを組む</b><small>カードプールとデッキ編集</small></button>
     </div>
     <div class="tsubrow" id="tFeedRow" hidden style="flex-wrap:wrap"><span style="flex-basis:100%;font-size:12px;color:#e0b341">カードがまだ入ってない。管理してる人から教わった配信コード（またはリンク）を貼って。</span><input id="tFeedId" type="text" placeholder="配信コード" autocomplete="off" style="flex:1;min-width:0;font:inherit;color:#eef3f6;background:rgba(0,0,0,.3);border:1px solid rgba(255,255,255,.18);border-radius:8px;padding:8px"><button type="button" id="tFeedGo">読み込む</button></div>
@@ -335,6 +341,12 @@ body.at-title{overflow:hidden}
   <section id="setupView" class="setup2">
     <div class="setcol">
       <p class="fmt" id="cloudMsg" style="margin:0">保存先を確認中…</p>
+      <div id="feedBox" class="panel" hidden>
+        <h2>カードの配信元</h2>
+        <p class="fmt" style="margin:0">管理する人から教わった配信コードを入れると、カードとデッキがその人の最新版にそろう。開くたびに自動で更新される。</p>
+        <div class="toolbar"><input id="feedId" type="text" placeholder="配信コード" autocomplete="off" style="flex:1 1 140px;min-width:0;font:inherit;background:var(--mat);color:var(--ink);border:1px solid var(--line);border-radius:6px;padding:5px 8px"><button id="btnFeed" type="button">保存して読み込む</button></div>
+        <div id="feedStatus" class="fmt"></div>
+      </div>
       <details class="panel" id="importBox">
         <summary><h2 style="display:inline">カードを取り込む</h2></summary>
         <p class="fmt">1行1種類で <code>カード名|コスト|種類|攻撃|体力|テキスト</code>。先頭に枚数が付いていても読める（取り込みでは枚数を無視）。種類は「フォロワー」「スペル」「アミュレット」。テキスト内の改行は <code>\n</code>。同じ名前のカードを取り込むと上書きするから、テキストの直しもここでできる。</p>
@@ -368,15 +380,15 @@ body.at-title{overflow:hidden}
       </div>
     </div>
     <aside class="panel deckpanel">
-      <div class="zonehead"><h2>デッキ</h2><button id="btnNewDeck2" type="button">＋新しいデッキ</button></div>
+      <div class="zonehead"><h2 id="deckHead">デッキ</h2><button id="btnNewDeck2" type="button" class="deckonly">＋新しいデッキ</button></div>
       <select id="deckSel" aria-label="編集するデッキ"></select>
-      <label class="opts">名前 <input id="deckName" type="text" placeholder="デッキ名"></label>
-      <label class="opts">クラス <select id="deckCls"></select></label>
+      <label class="opts deckonly">名前 <input id="deckName" type="text" placeholder="デッキ名"></label>
+      <label class="opts deckonly">クラス <select id="deckCls"></select></label>
       <div class="dsum" id="deckSum"></div>
       <div id="validate"></div>
-      <div class="dlist" id="deckList"></div>
-      <div class="toolbar"><button id="btnDupDeck" type="button">複製</button><button id="btnDelDeck" type="button" class="danger">このデッキを削除</button></div>
-      <details id="deckImportBox">
+      <div class="dlist deckonly" id="deckList"></div>
+      <div class="toolbar deckonly"><button id="btnDupDeck" type="button">複製</button><button id="btnDelDeck" type="button" class="danger">このデッキを削除</button></div>
+      <details id="deckImportBox" class="deckonly">
         <summary class="fmt" style="cursor:pointer">リストからデッキを作る</summary>
         <div class="zone" style="padding-top:6px">
           <p class="fmt" style="margin:0">1行に「枚数 カード名」。「エボルヴ」という行より下はエボルヴデッキ。最初の行を「#デッキ名」にすると名前になる。</p>
@@ -385,15 +397,16 @@ body.at-title{overflow:hidden}
           <div id="deckImportMsg" class="fmt"></div>
         </div>
       </details>
-      <p class="fmt" style="margin:0">変更は自動で保存される。</p>
+      <p class="fmt deckonly" style="margin:0">変更は自動で保存される。</p>
+      <div id="battleOpts" class="zone" style="padding:0">
       <div class="opts">
         <label><input type="radio" name="order" id="ordFirst" value="first" checked> 先攻</label>
         <label><input type="radio" name="order" id="ordSecond" value="second"> 後攻（EP3で開始）</label>
         <label>初期手札 <input type="number" id="optHand" min="1" max="10" value="4"></label>
         <label><input type="checkbox" id="optSkipDraw" checked> 先攻1ターン目はドローしない</label>
       </div>
-      <label class="opts">対戦相手 <select id="oppDeckSel"></select></label>
-      <div class="fmt" id="cpuInfo"></div>
+      <label class="opts cpuonly">対戦相手 <select id="oppDeckSel"></select></label>
+      <div class="fmt cpuonly" id="cpuInfo"></div>
       <div id="netBox" class="zone" hidden>
         <h2>オンライン対戦</h2>
         <label class="opts">名前 <input id="netName" type="text" placeholder="相手に表示する名前" style="flex:1 1 120px;min-width:0;font:inherit;background:var(--mat);color:var(--ink);border:1px solid var(--line);border-radius:6px;padding:5px 8px"></label>
@@ -401,14 +414,9 @@ body.at-title{overflow:hidden}
         <div class="toolbar"><input id="netCode" type="text" placeholder="合言葉" autocapitalize="characters" style="width:8em;font:inherit;background:var(--mat);color:var(--ink);border:1px solid var(--line);border-radius:6px;padding:5px 8px"><button id="btnJoin" type="button">参加する</button></div>
         <div id="netStatus" class="fmt"></div>
       </div>
-      <div id="feedBox" class="zone" hidden>
-        <h2>カードの配信元</h2>
-        <p class="fmt" style="margin:0">管理する人から教わった配信コードを入れると、カードとデッキがその人の最新版にそろう。開くたびに自動で更新される。</p>
-        <div class="toolbar"><input id="feedId" type="text" placeholder="配信コード" autocomplete="off" style="flex:1 1 140px;min-width:0;font:inherit;background:var(--mat);color:var(--ink);border:1px solid var(--line);border-radius:6px;padding:5px 8px"><button id="btnFeed" type="button">保存して読み込む</button></div>
-        <div id="feedStatus" class="fmt"></div>
-      </div>
       <button id="btnStart" class="primary" type="button">このデッキで開始</button>
       <div id="startMsg" class="warn"></div>
+      </div>
     </aside>
   </section>
 
@@ -682,6 +690,8 @@ function badges(c){
   return `${tt ? `<span class="badge evo">${esc(tt)}</span>` : ''}<span class="badge">${rc ? esc(rc) : 'クラス未設定'}</span><span class="badge">${esc(c.evo ? 'エボルヴ' : c.type)}</span><span class="badge">コスト${esc(c.cost === '' ? '-' : c.cost)}</span>${c.atk != null ? `<span class="badge">${c.atk}/${c.def}</span>` : ''}${c.sample ? '<span class="badge">サンプル</span>' : ''}`;
 }
 function renderSetup(){
+  const sv = $('setupView'); const md = SETMODE || 'deck'; sv.classList.toggle('mode-deck', md === 'deck'); sv.classList.toggle('mode-battle', md === 'battle');
+  $('deckHead').textContent = md === 'battle' ? '対戦の準備・使うデッキ' : 'デッキ';
   const q = $('poolQ').value.trim(), ty = $('poolType').value;
   const only = $('poolOnlyCls').checked && DK.cls;
   const inCls = c => !only || !c.cls || usableIn(c, DK.cls);
@@ -2413,7 +2423,7 @@ $('overlay').addEventListener('click', e => { if (e.target === $('overlay')) clo
 document.addEventListener('keydown', e => { if (e.key === 'Escape' && !$('overlay').hidden) closeModal(); });
 $('btnStart').onclick = () => { if (NET.on){ netStartGame(); return; } start(); };
 $('btnUndo').onclick = undo;
-$('btnSetup').onclick = () => { S = null; history = []; sel = null; closeModal(); render(); };
+$('btnSetup').onclick = () => { SETMODE = NET.on ? 'battle' : 'deck'; S = null; history = []; sel = null; closeModal(); render(); };
 $('btnMull').onclick = () => { save(); const n = S.hand.length; S.deck.push(...S.hand.splice(0)); for (let i=0;i<n;i++) S.hand.push(S.deck.shift()); S.mulled = true; log(`マリガン：手札${n}枚を山札の下に置いて、上から${n}枚引いた`); render(); };
 $('btnKeep').onclick = async () => {
   if (S.pvp){ history = []; S.phase = 'wait'; log('キープ。相手の準備を待つ'); NET.ready.me = true; render(); netFlush(); netSend({t: 'ready'}); netMaybeBegin(); return; }
@@ -2688,6 +2698,7 @@ function netRenderSetup(){
   $('btnStart').disabled = NET.on && NET.role === 'guest';
   $('btnStart').textContent = NET.on ? (NET.role === 'host' ? 'オンライン対戦を開始' : '相手が開始するのを待ってる') : 'このデッキで開始';
   $('netStatus').textContent = NET.status;
+  $('btnStart').hidden = (SETMODE === 'battle') && !NET.on;
 }
 
 $('btnHost').onclick = netHost;
@@ -2724,7 +2735,7 @@ $('btnNetClose').onclick = netClose;
 /* アプリ版：公開リポジトリの cards.txt と decks.json を読み込む（カードは上書き追加、デッキは一度だけ追加） */
 
 /* ---------- タイトル画面 ---------- */
-var TITLE = {on: true};
+var TITLE = {on: true}, SETMODE = 'deck';
 function deckLabel(d){ return `${d.name || '名前なし'}（${d.cls ? d.cls + '・' : ''}${Object.values(d.main).reduce((a, b) => a + b, 0)}枚）`; }
 function renderTitle(){
   const v = $('titleView'); if (!v) return;
@@ -2743,10 +2754,16 @@ document.querySelectorAll('#titleView [data-go]').forEach(b => b.onclick = () =>
   const go = b.dataset.go;
   if (go === 'cpu'){ const r = $('tCpuRow'); r.hidden = !r.hidden; return; }
   leaveTitle();
-  if (go === 'solo'){ LS.set('evolveSolo.oppDeck', ''); renderSetup(); start(); if (!S) $('startMsg').scrollIntoView({block: 'center'}); }
-  else if (go === 'online'){ LS.set('evolveSolo.oppDeck', ''); renderSetup(); $('netBox').scrollIntoView({block: 'center'}); }
+  if (go === 'solo'){ LS.set('evolveSolo.oppDeck', ''); titleStart(); }
+  else if (go === 'online'){ LS.set('evolveSolo.oppDeck', ''); SETMODE = 'battle'; renderSetup(); }
+  else if (go === 'deck'){ SETMODE = 'deck'; renderSetup(); }
 });
-$('tCpuGo').onclick = () => { LS.set('evolveSolo.oppDeck', $('tOpp').value); leaveTitle(); renderSetup(); start(); if (!S) $('startMsg').scrollIntoView({block: 'center'}); };
+$('tCpuGo').onclick = () => { LS.set('evolveSolo.oppDeck', $('tOpp').value); leaveTitle(); titleStart(); };
+function titleStart(){
+  $(($('tOrder').value === 'second') ? 'ordSecond' : 'ordFirst').checked = true;
+  renderSetup(); start();
+  if (!S){ const why = $('startMsg').textContent || 'このデッキでは始められない。'; TITLE.on = true; render(); renderTitle(); $('tFeed').textContent = '⚠ ' + why; }
+}
 $('btnTitle').onclick = goTitle;
 $('tFeedGo').onclick = () => {
   const id = feedIdOf($('tFeedId').value);
