@@ -316,6 +316,7 @@ body.at-title{overflow:hidden}
       <div class="tsubrow" id="tCpuRow" hidden><select id="tOpp" aria-label="CPUのデッキ"></select><button type="button" id="tCpuGo">対戦開始</button></div>
       <button type="button" class="tbtn" data-go="deck" style="grid-column:1/-1;min-height:0;flex-direction:row;align-items:center;gap:12px"><svg viewBox="0 0 24 24"><rect x="4" y="5" width="10" height="14" rx="2"/><path d="M17 8l3 1-3 10-3-1M9 9v6M6 12h6"/></svg><b>デッキを組む</b><small>カードプールとデッキ編集</small></button>
     </div>
+    <div class="tsubrow" id="tFeedRow" hidden style="flex-wrap:wrap"><span style="flex-basis:100%;font-size:12px;color:#e0b341">カードがまだ入ってない。管理してる人から教わった配信コード（またはリンク）を貼って。</span><input id="tFeedId" type="text" placeholder="配信コード" autocomplete="off" style="flex:1;min-width:0;font:inherit;color:#eef3f6;background:rgba(0,0,0,.3);border:1px solid rgba(255,255,255,.18);border-radius:8px;padding:8px"><button type="button" id="tFeedGo">読み込む</button></div>
     <p class="tfeed" id="tFeed"></p>
   </div>
   <p class="tlegal">非公式のファンツール（営利目的なし・身内用）。公式とは関係ありません。<br>Shadowverse EVOLVE：© Cygames, Inc. ©Bushiroad</p>
@@ -2733,6 +2734,7 @@ function renderTitle(){
   const ov = LS.get('evolveSolo.oppDeck', '');
   $('tOpp').innerHTML = SAVED.map(d => `<option value="${esc(d.id)}" ${d.id === ov ? 'selected' : ''}>CPU：${esc(deckLabel(d))}</option>`).join('');
   $('tFeed').textContent = $('feedStatus') ? $('feedStatus').textContent : '';
+  $('tFeedRow').hidden = !STANDALONE || (!!LS.get('evolveSolo.feed', '') && LIB.some(c => !c.sample));
 }
 function leaveTitle(){ TITLE.on = false; renderTitle(); render(); window.scrollTo(0, 0); }
 function goTitle(){ if (NET.on) return; S = null; history = []; sel = null; closeModal(); TITLE.on = true; render(); renderTitle(); }
@@ -2746,6 +2748,11 @@ document.querySelectorAll('#titleView [data-go]').forEach(b => b.onclick = () =>
 });
 $('tCpuGo').onclick = () => { LS.set('evolveSolo.oppDeck', $('tOpp').value); leaveTitle(); renderSetup(); start(); if (!S) $('startMsg').scrollIntoView({block: 'center'}); };
 $('btnTitle').onclick = goTitle;
+$('tFeedGo').onclick = () => {
+  const id = feedIdOf($('tFeedId').value);
+  if (!id){ $('tFeed').textContent = '⚠ 配信コードの形がおかしい。長い英数字の部分を貼って。'; return; }
+  LS.set('evolveSolo.feed', id); loadStarter();
+};
 renderTitle();
 /* アプリ版：カードとデッキは「非公開のGist」から配る。リポジトリにはカードの文章を置かない */
 function feedIdOf(v){ const m = String(v || '').trim().match(/([0-9a-f]{20,40})(?:[^0-9a-f]|$)/i); return m ? m[1] : ''; }
