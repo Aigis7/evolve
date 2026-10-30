@@ -1461,6 +1461,9 @@ function pickCards(cards, test, {title, note, skip = '選ばない', btn}){
 /* 「レヴィオン・フォロワー」「カード名に「X」を含む…」などの条件を判定する */
 function makeFilter(x, src){
   x = String(x || '').trim();
+  // 「土属性・カードか光属性・カードか闇属性・カード」のような「AかB」は、どれかに当てはまればよい
+  const ors = x.split(/(?<=(?:カード|フォロワー|スペル|アミュレット))か(?=.)/);
+  if (ors.length > 1 && !/「[^」]*か/.test(x)){ const fs = ors.map(o => makeFilter(o, src)); return d => fs.some(f => f(d)); }
   let ex = null, names = null, inc = null, m, costMax = null, costEq = null;
   x = x.replace(/^他の/, '');
   if (x.includes('これと同名を除く')){ ex = src && src.name; x = x.replace(/「?これと同名を除く([^」]*)」?/, '$1'); }
