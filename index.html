@@ -407,7 +407,8 @@ header.top h1{font-size:20px}
 .dragghost .card{box-shadow:0 12px 28px rgba(0,0,0,.35)}
 body.dragging{cursor:grabbing}
 body.drag-play #field{outline:2px dashed var(--accent);outline-offset:3px;border-radius:10px}
-body.drag-attack #oppField{outline:2px dashed var(--danger);outline-offset:3px;border-radius:10px}
+body.drag-attack #oppField,body.drag-aim #oppField{outline:2px dashed var(--danger);outline-offset:3px;border-radius:10px}
+body.drag-aim .dropover[data-ou]{outline-color:var(--danger) !important}
 .dropover{outline:3px solid var(--accent) !important;outline-offset:2px}
 body.drag-attack .dropover{outline-color:var(--danger) !important}
 /* 相手のEXエリア */
@@ -1812,7 +1813,10 @@ async function doSentence(s, src, ctx){
     for (let k = 0; k < many; k++){
       const left = items.filter(it => !us.includes(it.value));
       if (!left.length) break;
-      const v = await ask({title: `${src.name}：${m[3] ? '相手のリーダーかフォロワー' : '相手のフォロワー'}を選ぶ${many > 1 ? `（${k + 1}/${many}）` : ''}`, note: (actOnly ? 'アクト状態のフォロワーだけ。' : '') + (lim != null ? `元のコスト${lim}${le ? '以下' : ''}（手動で置いた相手のフォロワーは、コストが分からないので全部出る）` : ''), items: left, skip: k ? 'これで決定' : '選ばない'});
+      // ドラッグで相手のフォロワー（リーダー）の上に置いたときは、それを選んだことにする
+      const pre = k === 0 && PRE.on ? (PRE.leader && m[3] ? 'L' : left.some(it => it.value === PRE.ou) ? PRE.ou : null) : null;
+      if (k === 0) PRE.on = false;
+      const v = pre != null ? pre : await ask({title: `${src.name}：${m[3] ? '相手のリーダーかフォロワー' : '相手のフォロワー'}を選ぶ${many > 1 ? `（${k + 1}/${many}）` : ''}`, note: (actOnly ? 'アクト状態のフォロワーだけ。' : '') + (lim != null ? `元のコスト${lim}${le ? '以下' : ''}（手動で置いた相手のフォロワーは、コストが分からないので全部出る）` : ''), items: left, skip: k ? 'これで決定' : '選ばない'});
       if (v == null) break;
       if (v === 'L'){ ctx.pick = {side: 'leader'}; log('選んだ：相手のリーダー'); return true; }
       us.push(v); log(`選んだ：相手の${findOpp(v).name}`);
@@ -2587,6 +2591,8 @@ function closeModal(){
 
 
 /* ---------- ドラッグ操作：手札・EX→場でプレイ、場のフォロワー→相手のフォロワーやリーダーで攻撃 ---------- */
+const PRE = {on: false, ou: null, leader: false};
+const AIM_RE = /相手の(?:リーダー1人か相手の)?(?:場の)?(?:フォロワー|カード)\d+(?:体|枚)(?:まで)?を?選ぶ/;
 const DRAG = {src: null, ghost: null, x0: 0, y0: 0, on: false, kind: '', over: null, block: false};
 function dragKind(u){
   if (!S || S.over || S.phase !== 'play' || promptResolve) return '';
@@ -2599,6 +2605,10 @@ function dropAt(x, y){
   const el = document.elementFromPoint(x, y); if (!el) return null;
   if (DRAG.kind === 'play'){
     if (el.closest('#handZone') || el.closest('#overlay')) return null;
+    if (DRAG.aim){
+      const oc = el.closest('[data-ou]'); if (oc) return {t: 'play', ou: Number(oc.dataset.ou), el: oc};
+      const st = el.closest('.stat'); if (st && st.querySelector('#vOpp')) return {t: 'play', leader: true, el: st};
+    }
     return el.closest('#field, #oppField, #ex, .table') ? {t: 'play', el: $('field')} : null;
   }
   const oc = el.closest('[data-ou]');
@@ -2613,13 +2623,13 @@ function dragMark(d){
 }
 function dragEnd(){
   if (DRAG.ghost) DRAG.ghost.remove();
-  dragMark(null); document.body.classList.remove('dragging', 'drag-play', 'drag-attack');
+  dragMark(null); document.body.classList.remove('dragging', 'drag-play', 'drag-attack', 'drag-aim');
   DRAG.src = null; DRAG.ghost = null; DRAG.on = false;
 }
 document.addEventListener('pointerdown', e => {
   const b = e.target.closest('#gameView .card[data-u]'); if (!b || e.button > 0) return;
   const u = Number(b.dataset.u), k = dragKind(u); if (!k) return;
-  DRAG.src = b; DRAG.u = u; DRAG.kind = k; DRAG.x0 = e.clientX; DRAG.y0 = e.clientY; DRAG.on = false; DRAG.pid = e.pointerId;
+  DRAG.src = b; DRAG.u = u; DRAG.kind = k; DRAG.aim = k === 'play' && AIM_RE.test(z2h(baseOf(find(u).c).text || '')); DRAG.x0 = e.clientX; DRAG.y0 = e.clientY; DRAG.on = false; DRAG.pid = e.pointerId;
 });
 document.addEventListener('pointermove', e => {
   if (!DRAG.src || e.pointerId !== DRAG.pid) return;
@@ -2637,7 +2647,7 @@ document.addEventListener('pointermove', e => {
     cl.style.width = '100%'; cl.style.height = '100%'; g.appendChild(cl);
     DRAG.dx = DRAG.x0 - r.left; DRAG.dy = DRAG.y0 - r.top;
     document.body.appendChild(g); DRAG.ghost = g;
-    document.body.classList.add('dragging', DRAG.kind === 'play' ? 'drag-play' : 'drag-attack');
+    document.body.classList.add('dragging', DRAG.kind === 'play' ? 'drag-play' : 'drag-attack'); if (DRAG.aim) document.body.classList.add('drag-aim');
     try { DRAG.src.setPointerCapture(e.pointerId); } catch (_){}
   }
   e.preventDefault();
@@ -2653,7 +2663,11 @@ document.addEventListener('pointerup', async e => {
   if (!d) return;
   sel = null;
   const c = find(u) && find(u).c; if (!c) return;
-  if (d.t === 'play'){ await act('play', u); return; }
+  if (d.t === 'play'){
+    PRE.on = d.ou != null || !!d.leader; PRE.ou = d.ou ?? null; PRE.leader = !!d.leader;
+    try { await act('play', u); } finally { PRE.on = false; }
+    return;
+  }
   const st = atkState(c);
   if (d.t === 'leader'){
     if (!st.l){ log(st.why || 'このフォロワーはリーダーに攻撃できない'); render(); return; }
