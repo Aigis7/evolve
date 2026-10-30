@@ -303,6 +303,82 @@ body.at-title{overflow:hidden}
 #setupView.mode-battle .setcol,#setupView.mode-battle .deckonly,#setupView.mode-battle .cpuonly{display:none !important}
 #setupView.mode-battle{grid-template-columns:minmax(0,520px);justify-content:center}
 #setupView.mode-battle .deckpanel{position:static}
+
+/* 相手のEXエリア */
+.exchips{display:flex;flex-wrap:wrap;gap:6px}
+.exchip{display:flex;align-items:center;gap:6px;max-width:100%;padding:4px 8px 4px 4px;border-radius:8px;border-left:3px solid var(--follower);font-size:12px;text-align:left}
+.exchip.t-spell{border-left-color:var(--spell)} .exchip.t-amulet{border-left-color:var(--amulet)}
+.exchip .cost{min-width:20px;height:20px;font-size:11px}
+.exchip.t-spell .cost{background:var(--spell)} .exchip.t-amulet .cost{background:var(--amulet)}
+.exchip .nm{font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0}
+.exchip .st{font-family:var(--f-num);font-weight:700;color:var(--muted);font-size:11px}
+.logtick{display:none}
+.sheetbtns{display:grid !important;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+.sheetbtns button{min-height:46px;font-size:14px}
+/* ---------- スマホの対戦画面：スクロールなしで収める ---------- */
+@media (max-width:700px){
+  body.in-game header.top{display:none}
+  body.in-game .wrap{gap:6px}
+  body.in-game{padding-top:max(6px,env(safe-area-inset-top,0px))}
+  #gameView{gap:6px}
+  #gameView .zone{gap:3px}
+  #gameView .table > .zone{gap:6px}
+  .turnbar{flex-wrap:nowrap;justify-content:space-between}
+  .turnbar .optsbox{order:3}
+  .turnlbl{flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .gamebtns{gap:4px;flex:none}
+  .gamebtns button{padding:4px 8px;font-size:12px}
+  .optsbox summary{padding:2px 0;font-size:12px}
+  .logtick{display:block;width:100%;text-align:left;font-size:11.5px;padding:4px 8px;color:var(--muted);background:var(--surface);
+    white-space:nowrap;overflow:hidden;text-overflow:ellipsis;border-radius:6px}
+  .logtick .t{font-family:var(--f-num);margin-right:6px}
+  /* 数値は1行。タップすると＋−が出る */
+  .stats{position:static;padding-block:0}
+  .stat{padding:3px 4px;grid-template-columns:auto 1fr;align-items:baseline;gap:0 4px;text-align:left}
+  .stat .lbl{grid-column:auto;font-size:9.5px}
+  .stat .val{grid-column:auto;font-size:16px;text-align:right}
+  .stat button{display:none}
+  .stats.adjon .stat{grid-template-columns:1fr 1fr}
+  .stats.adjon .stat .lbl,.stats.adjon .stat .val{grid-column:1/-1;text-align:center}
+  .stats.adjon .stat button{display:block}
+  #oppHead{flex-wrap:wrap;align-items:center;row-gap:2px}
+  #oppHead .toolbar{gap:4px;flex:1;justify-content:flex-end;flex-wrap:nowrap;min-width:0}
+  #oppHead .n{font-size:10px;line-height:1.3;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1}
+  #oppHead button{padding:2px 6px;font-size:11px;white-space:nowrap}
+  .slots.opp .slot{min-height:74px}
+  .slot{min-height:82px}
+  .slot.empty{font-size:10px}
+  /* 自分のEXは中身だけ小さく並べる */
+  .slots.ex .slot{min-height:0}
+  .slots.ex .slot.empty{display:none}
+  .slots.ex .cfoot{display:none}
+  .slots.ex .cname{-webkit-line-clamp:2}
+  .exchip{font-size:11px;padding:3px 6px 3px 3px}
+  /* 山札などは1行のタイル。タップで操作 */
+  .side{gap:0}
+  .side > .panel:not(.detail){padding:0;border:0;background:none}
+  .piles{grid-template-columns:repeat(4,minmax(0,1fr));gap:4px}
+  .pile{padding:4px 6px;gap:0;cursor:pointer;background:var(--surface)}
+  .pile .top{align-items:center}
+  .pile h2{font-size:10px;letter-spacing:.04em}
+  .pile .cnt{font-size:16px}
+  .pile .btns,.pile .gbreak{display:none}
+  .side > .panel:has(#log){display:none}
+}
+
+@media (max-width:700px){ body.in-game #legalFoot{display:none} }
+/* 背の低いスマホ（iPhone SEなど） */
+@media (max-width:700px) and (max-height:760px){
+  .logtick{display:none}
+  .slots.opp .slot{min-height:60px}
+  .slot{min-height:66px}
+  .slots .cname{-webkit-line-clamp:2}
+  .handrow .ctext{display:none}
+  .handrow .card{width:100px}
+  #handZone{gap:4px;padding-top:6px}
+  .dockbtns button{padding:6px 10px}
+  body{padding-bottom:calc(150px + env(safe-area-inset-bottom,0px))}
+}
 </style>
 <script src="peerjs.min.js"></script>
 </head>
@@ -432,6 +508,7 @@ body.at-title{overflow:hidden}
     </div>
     <div class="turnbar">
       <span class="turnlbl" id="turnLbl">-</span>
+      <span class="gamebtns mobile-only"><button type="button" id="pxUndo" data-proxy="btnUndo">戻す</button><button type="button" data-proxy="btnTitle">タイトル</button></span>
       <button id="btnTurnStart" class="primary desk-only" type="button">ターン開始（PP+1・スタンド・ドロー）</button>
       <button id="btnTurnEnd" class="desk-only" type="button">ターン終了</button>
       <details class="optsbox"><summary>設定</summary>
@@ -443,7 +520,8 @@ body.at-title{overflow:hidden}
         </div>
       </details>
     </div>
-    <div class="stats">
+    <button type="button" id="logTick" class="logtick mobile-only" aria-label="ログを全部見る"></button>
+    <div class="stats" id="statsBar">
       <div class="stat life"><span class="lbl">ライフ</span><button data-adj="life:-1" type="button">−</button><span class="val" id="vLife">20</span><button data-adj="life:1" type="button">＋</button></div>
       <div class="stat pp"><span class="lbl">PP</span><button data-adj="pp:-1" type="button">−</button><span class="val" id="vPP">0/0</span><button data-adj="pp:1" type="button">＋</button><span class="ppdots" id="ppDots"></span></div>
       <div class="stat ep"><span class="lbl" id="lblEP">EP</span><button data-adj="ep:-1" type="button">−</button><span class="val" id="vEP">0</span><button data-adj="ep:1" type="button">＋</button></div>
@@ -453,8 +531,12 @@ body.at-title{overflow:hidden}
     <div class="table">
       <div class="zone">
         <div class="zone">
-          <div class="zonehead"><h2>相手の場</h2><span class="toolbar" style="align-items:center"><span class="n" id="nOpp">0/5</span><button type="button" id="btnOppGrave">相手の墓場 <span id="nOppGrave">0</span></button><button type="button" id="btnOppAdd">＋相手のフォロワー</button></span></div>
+          <div class="zonehead" id="oppHead"><h2>相手の場</h2><span class="toolbar" style="align-items:center"><span class="n" id="nOpp">0/5</span><button type="button" id="btnOppGrave">相手の墓場 <span id="nOppGrave">0</span></button><button type="button" id="btnOppAdd">＋相手のフォロワー</button></span></div>
           <div class="slots opp" id="oppField"></div>
+        </div>
+        <div class="zone" id="oppExZone" hidden>
+          <div class="zonehead"><h2>相手のEXエリア</h2><span class="n" id="nOppEx">0/5</span></div>
+          <div class="exchips" id="oppEx"></div>
         </div>
         <div class="zone">
           <div class="zonehead"><h2>場</h2><span class="n" id="nField">0/5</span></div>
@@ -910,6 +992,26 @@ function openOppGrave(){
   const list = S.pvp ? [...(S.oppGraveRemote || [])].sort((a, b) => (Number(a.cost) || 0) - (Number(b.cost) || 0)) : S.O ? [...S.O.grave].sort(byCostInst).map(c => D(c)) : (S.oppGraveManual || []);
   $('mTitle').textContent = `相手の墓場（${list.length}枚・コスト順）`;
   $('mBody').innerHTML = list.length ? list.map(d => `<div class="mrow"><div><div class="nm">${esc(d.name)} <span class="badge">${esc(d.type || '')} ${esc(d.cost === '' || d.cost == null ? '-' : d.cost)}</span>${d.atk != null ? ` <span class="badge">${d.atk}/${d.def}</span>` : ''}</div>${d.text ? `<div class="tx">${esc(d.text)}</div>` : ''}</div></div>`).join('') : '<p class="fmt">カードなし</p>';
+  $('overlay').hidden = false;
+}
+function openOppEx(i){
+  modalZone = null;
+  const list = (S.oppStat && S.oppStat.exl) || [];
+  $('mTitle').textContent = `相手のEXエリア（${list.length}枚）`;
+  $('mBody').innerHTML = list.map((d, j) => `<div class="mrow${j === i ? '' : ' dim'}" style="${j === i ? '' : 'opacity:.75'}"><div><div class="nm">${esc(d.name)} <span class="badge">${esc(d.type || '')} ${esc(d.cost === '' || d.cost == null ? '-' : d.cost)}</span>${d.atk != null && d.atk !== '' ? ` <span class="badge">${d.atk}/${d.def}</span>` : ''}</div>${d.text ? `<div class="tx">${esc(d.text)}</div>` : ''}</div></div>`).join('') || '<p class="fmt">カードなし</p>';
+  $('overlay').hidden = false;
+}
+function openLog(){
+  modalZone = null;
+  $('mTitle').textContent = 'ログ（新しい順）';
+  $('mBody').innerHTML = `<div class="log" style="max-height:none">${S.log.map(l => `<div><span class="t">${esc(l.t)}</span>${esc(l.m)}</div>`).join('')}</div>`;
+  $('overlay').hidden = false;
+}
+function openPileSheet(p){
+  modalZone = null;
+  $('mTitle').textContent = `${p.querySelector('h2').textContent}（${p.querySelector('.cnt').textContent}枚）`;
+  const gb = p.querySelector('.gbreak');
+  $('mBody').innerHTML = (gb ? `<div class="gbreak">${gb.innerHTML}</div>` : '') + `<div class="actions sheetbtns">${p.querySelector('.btns').innerHTML}</div>`;
   $('overlay').hidden = false;
 }
 function openOppAdd(){
@@ -2272,6 +2374,7 @@ function detailHTML(){
 
 function render(){
   const setup = !S;
+  if (setup) document.body.classList.remove('in-game');
   $('setupView').hidden = !setup; $('gameView').hidden = setup;
   $('btnUndo').disabled = !history.length || !!(S && S.pvp);
   if (setup){ renderSetup(); return; }
@@ -2295,6 +2398,13 @@ function render(){
   const st = S.oppStat;
   $('nOpp').textContent = `${S.oppF.length}/5` + (S.pvp && st ? `　手札${st.hand}・山札${st.deck}・PP${st.pp}/${st.maxPP}・EP${st.ep}・EX${st.ex}${st.am && st.am.length ? `・アミュレット：${st.am.join('、')}` : ''}` : '') + (S.O ? `　手札${S.O.hand.length}・山札${S.O.deck.length}・PP${S.O.pp}/${S.O.maxPP}・EP${S.O.ep}` : '');
   $('btnOppAdd').hidden = !!S.O || !!S.pvp;
+  const oex = (S.pvp && st && st.exl) || [];
+  $('oppExZone').hidden = !S.pvp;
+  $('nOppEx').textContent = `${oex.length}/5`;
+  $('oppEx').innerHTML = oex.length ? oex.map((d, i) => `<button type="button" class="exchip t-${TYPE(d.type)}" data-oex="${i}"><span class="cost">${esc(d.cost === '' || d.cost == null ? '-' : d.cost)}</span><span class="nm">${esc(d.name)}</span>${d.atk != null && d.atk !== '' ? `<span class="st">${d.atk}/${d.def}</span>` : ''}</button>`).join('') : '<span class="fmt">なし</span>';
+  document.body.classList.add('in-game');
+  const last = S.log[S.log.length - 1]; $('logTick').innerHTML = last ? `<span class="t">${esc(last.t)}</span>${esc(last.m)}` : 'ログ';
+  $('pxUndo').disabled = $('btnUndo').disabled;
   $('nOppGrave').textContent = S.pvp ? (S.oppGraveRemote || []).length : S.O ? S.O.grave.length : (S.oppGraveManual || []).length;
   $('field').innerHTML = slotsHTML(S.field, 'field'); $('ex').innerHTML = slotsHTML(S.ex, 'ex');
   $('nField').textContent = `${S.field.length}/5`; $('nEx').textContent = `${S.ex.length}/5`;
@@ -2369,6 +2479,9 @@ function closeModal(){
 }
 
 /* ---------- events ---------- */
+const MOBILE = () => window.matchMedia('(max-width:700px)').matches;
+document.querySelectorAll('.pile').forEach(p => p.addEventListener('click', e => { if (!MOBILE() || e.target.closest('button')) return; openPileSheet(p); }));
+$('statsBar').addEventListener('click', e => { if (!MOBILE() || e.target.closest('button')) return; $('statsBar').classList.toggle('adjon'); });
 document.addEventListener('click', ev => {
   const t = ev.target.closest('button'); if (!t) return;
   if (t.dataset.pick != null){ const i = Number(t.dataset.pick), r = promptResolve; promptResolve = null; $('overlay').hidden = true; if (r) r(i < 0 ? null : promptItems[i].value); return; }
@@ -2388,6 +2501,9 @@ document.addEventListener('click', ev => {
   if (t.dataset.proxy){ $(t.dataset.proxy).click(); return; }
   if (t.dataset.ou){ const u = Number(t.dataset.ou); sel = sel === u ? null : u; render(); return; }
   if (t.id === 'btnOppAdd'){ openOppAdd(); return; }
+  if (t.dataset.oex != null){ openOppEx(Number(t.dataset.oex)); return; }
+  if (t.id === 'logTick' || t.closest('#logTick')){ openLog(); return; }
+  if (t.dataset.pile && t.closest('#mBody') && !t.dataset.pile.startsWith('view:')) closeModal();
   if (t.id === 'btnOppGrave' || t.closest('#btnOppGrave')){ openOppGrave(); return; }
   if (t.dataset.oaddform){ save(); const kw = [...$('mBody').querySelectorAll('[data-okw]')].filter(x => x.checked).map(x => x.dataset.okw); addOpp({name: $('oName').value.trim() || '相手のフォロワー', atk: $('oAtk').value, def: $('oDef').value, kw, rest: $('oRest').checked}); closeModal(); render(); return; }
   if (t.dataset.oaddlib){ const c = libGet(t.dataset.oaddlib); if (!c) return; save(); addOpp({name: c.name, atk: c.atk, def: c.def, kw: kwFromText(c.text), rest: $('oRest').checked}); closeModal(); render(); return; }
@@ -2558,7 +2674,7 @@ function netDiff(){
 function netSnap(){
   const KWS = ['守護', '威圧', 'オーラ', '指定攻撃', '必殺', '疾走', '突進', 'ドレイン'];
   const isF = c => TYPE(baseOf(c).type) === 'follower' || piloted(c);
-  return {t: 'snap', life: S.life, pp: S.pp, maxPP: S.maxPP, ep: S.ep, sep: S.sep ?? 0, hand: S.hand.length, deck: S.deck.length, ex: S.ex.length, turn: S.turn, phase: S.phase, over: S.over,
+  return {t: 'snap', life: S.life, pp: S.pp, maxPP: S.maxPP, ep: S.ep, sep: S.sep ?? 0, hand: S.hand.length, deck: S.deck.length, ex: S.ex.length, exl: S.ex.map(c => { const d = D(c); return {name: d.name, type: d.type, cost: d.cost, atk: d.atk, def: d.def, text: d.text}; }), turn: S.turn, phase: S.phase, over: S.over,
     f: S.field.filter(isF).map(c => ({ru: c.u, name: dispName(c), atk: atkOf(c) || 0, def: defOf(c) || 1, dmg: c.dmg || 0, rest: !!c.rest, kw: KWS.filter(k => hasKw(c, k)), cost: D(c).cost, text: baseOf(c).text, type: baseOf(c).type, lb: c.lb || 0, evo: !!c.evo})),
     am: S.field.filter(c => !isF(c)).map(c => baseOf(c).name),
     grave: S.grave.map(c => { const d = D(c); return {name: d.name, type: d.type, cost: d.cost, atk: d.atk, def: d.def, text: d.text}; })};
@@ -2577,7 +2693,7 @@ function netOnSnap(s){
   if (!S || !S.pvp) return;
   netFlush(); // まだ送ってない差分を先に送る
   S.oppF = s.f.map(x => ({u: RU + x.ru, ru: x.ru, name: x.name, atk: x.atk, def: x.def, dmg: x.dmg, rest: x.rest, kw: x.kw, cost: x.cost, text: x.text, type: x.type, lb: x.lb, evo: x.evo}));
-  S.opp = s.life; S.oppStat = {hand: s.hand, deck: s.deck, pp: s.pp, maxPP: s.maxPP, ep: s.ep, sep: s.sep, ex: s.ex, turn: s.turn, phase: s.phase, am: s.am};
+  S.opp = s.life; S.oppStat = {hand: s.hand, deck: s.deck, pp: s.pp, maxPP: s.maxPP, ep: s.ep, sep: s.sep, ex: s.ex, exl: s.exl || [], turn: s.turn, phase: s.phase, am: s.am};
   S.oppGraveRemote = s.grave;
   NET.base = netBaseFromMirror();
   if (sel != null && sel >= RU && !findOpp(sel)) sel = null;
@@ -2823,7 +2939,7 @@ if ($('btnFeed')) $('btnFeed').onclick = () => {
 };
 </script>
 
-<p class="fmt" style="max-width:720px;margin:24px auto;padding:0 16px;text-align:center;font-size:11px">非公式のファンツール（営利目的なし・身内用）。公式とは関係ありません。Shadowverse EVOLVE：© Cygames, Inc. ©Bushiroad。カード情報の転載・再配布は禁止。</p>
+<p class="fmt" id="legalFoot" style="max-width:720px;margin:24px auto;padding:0 16px;text-align:center;font-size:11px">非公式のファンツール（営利目的なし・身内用）。公式とは関係ありません。Shadowverse EVOLVE：© Cygames, Inc. ©Bushiroad。カード情報の転載・再配布は禁止。</p>
 <script>
 if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(()=>{});
 </script>
