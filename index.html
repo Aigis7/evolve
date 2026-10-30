@@ -304,6 +304,18 @@ body.at-title{overflow:hidden}
 #setupView.mode-battle{grid-template-columns:minmax(0,520px);justify-content:center}
 #setupView.mode-battle .deckpanel{position:static}
 
+
+/* ドラッグ */
+#gameView .card[data-u]{-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
+#field .card,#ex .card{touch-action:none}
+#hand .card{touch-action:pan-x}
+.dragghost{position:fixed !important;left:0;top:0;z-index:40;pointer-events:none;opacity:.92;transition:none;margin:0;display:block !important;padding:0 !important;min-height:0 !important;overflow:visible !important}
+.dragghost .card{box-shadow:0 12px 28px rgba(0,0,0,.35)}
+body.dragging{cursor:grabbing}
+body.drag-play #field{outline:2px dashed var(--accent);outline-offset:3px;border-radius:10px}
+body.drag-attack #oppField{outline:2px dashed var(--danger);outline-offset:3px;border-radius:10px}
+.dropover{outline:3px solid var(--accent) !important;outline-offset:2px}
+body.drag-attack .dropover{outline-color:var(--danger) !important}
 /* 相手のEXエリア */
 .exchips{display:flex;flex-wrap:wrap;gap:6px}
 .exchip{display:flex;align-items:center;gap:6px;max-width:100%;padding:4px 8px 4px 4px;border-radius:8px;border-left:3px solid var(--follower);font-size:12px;text-align:left}
@@ -2105,7 +2117,7 @@ async function runSpell(def, ctx = {}){
 }
 
 /* ---------- actions on a selected card ---------- */
-async function act(a, u){
+async function act(a, u, opt){
   const f = find(u); if (!f) return;
   const c = f.c, d = D(c), name = d.name;
   save();
@@ -2203,7 +2215,7 @@ async function act(a, u){
     case 'atkFollower': {
       const ts = attackTargets(c);
       if (!ts.length){ history.pop(); log('攻撃できる相手のフォロワーがいない'); break; }
-      const tu = await ask({title: `${dispName(c)}で攻撃する相手`, note: guards().length ? 'アクト状態の守護がいるので、守護に攻撃する。' : '',
+      const tu = opt && opt.target != null && ts.some(o => o.u === opt.target) ? opt.target : await ask({title: `${dispName(c)}で攻撃する相手`, note: guards().length ? 'アクト状態の守護がいるので、守護に攻撃する。' : '',
         items: ts.map(o => ({label: `${o.name} ${o.atk}/${oppHp(o)}${o.rest ? '（アクト）' : ''}${(o.kw || []).map(k => `【${k}】`).join('')}`, value: o.u, btn: '攻撃', primary: true})), skip: 'やめる'});
       if (tu == null){ history.pop(); break; }
       log(`${dispName(c)}で相手の${findOpp(tu).name}に攻撃`); await setRest(c);
@@ -2477,6 +2489,93 @@ function closeModal(){
   modalZone = null; $('overlay').hidden = true;
   if (promptResolve){ const r = promptResolve; promptResolve = null; r(null); }
 }
+
+
+/* ---------- ドラッグ操作：手札・EX→場でプレイ、場のフォロワー→相手のフォロワーやリーダーで攻撃 ---------- */
+const DRAG = {src: null, ghost: null, x0: 0, y0: 0, on: false, kind: '', over: null, block: false};
+function dragKind(u){
+  if (!S || S.over || S.phase !== 'play' || promptResolve) return '';
+  const f = find(u); if (!f) return '';
+  if (f.z === 'hand' || (f.z === 'ex' && !/トレジャー/.test(baseOf(f.c).type))) return 'play';
+  if (f.z === 'field' && !(TYPE(baseOf(f.c).type) === 'amulet' && !piloted(f.c)) && !f.c.rest) return 'attack';
+  return '';
+}
+function dropAt(x, y){
+  const el = document.elementFromPoint(x, y); if (!el) return null;
+  if (DRAG.kind === 'play'){
+    if (el.closest('#handZone') || el.closest('#overlay')) return null;
+    return el.closest('#field, #oppField, #ex, .table') ? {t: 'play', el: $('field')} : null;
+  }
+  const oc = el.closest('[data-ou]');
+  if (oc) return {t: 'follower', ou: Number(oc.dataset.ou), el: oc};
+  const lead = el.closest('#oppField, #oppHead, #oppExZone') || (el.closest('.stat') && el.closest('.stat').querySelector('#vOpp') ? el.closest('.stat') : null);
+  if (lead) return {t: 'leader', el: lead.closest('.stat') || $('oppField')};
+  return null;
+}
+function dragMark(d){
+  if (DRAG.over && DRAG.over !== (d && d.el)) DRAG.over.classList.remove('dropover');
+  DRAG.over = d ? d.el : null; if (DRAG.over) DRAG.over.classList.add('dropover');
+}
+function dragEnd(){
+  if (DRAG.ghost) DRAG.ghost.remove();
+  dragMark(null); document.body.classList.remove('dragging', 'drag-play', 'drag-attack');
+  DRAG.src = null; DRAG.ghost = null; DRAG.on = false;
+}
+document.addEventListener('pointerdown', e => {
+  const b = e.target.closest('#gameView .card[data-u]'); if (!b || e.button > 0) return;
+  const u = Number(b.dataset.u), k = dragKind(u); if (!k) return;
+  DRAG.src = b; DRAG.u = u; DRAG.kind = k; DRAG.x0 = e.clientX; DRAG.y0 = e.clientY; DRAG.on = false; DRAG.pid = e.pointerId;
+});
+document.addEventListener('pointermove', e => {
+  if (!DRAG.src || e.pointerId !== DRAG.pid) return;
+  const dx = e.clientX - DRAG.x0, dy = e.clientY - DRAG.y0;
+  if (!DRAG.on){
+    if (Math.hypot(dx, dy) < 10) return;
+    // 手札は横に動かすと手札のスクロールになる
+    if (DRAG.src.closest('#hand') && Math.abs(dx) > Math.abs(dy)){ DRAG.src = null; return; }
+    DRAG.on = true;
+    const r = DRAG.src.getBoundingClientRect(), g = document.createElement('div'), cl = DRAG.src.cloneNode(true);
+    // 元の並び（場・手札）の見た目のまま持ち上げる
+    const home = DRAG.src.closest('.slots, .handrow');
+    g.className = (home ? home.className.replace(/\bopp\b/, '') : '') + ' dragghost';
+    g.style.width = r.width + 'px'; g.style.height = r.height + 'px';
+    cl.style.width = '100%'; cl.style.height = '100%'; g.appendChild(cl);
+    DRAG.dx = DRAG.x0 - r.left; DRAG.dy = DRAG.y0 - r.top;
+    document.body.appendChild(g); DRAG.ghost = g;
+    document.body.classList.add('dragging', DRAG.kind === 'play' ? 'drag-play' : 'drag-attack');
+    try { DRAG.src.setPointerCapture(e.pointerId); } catch (_){}
+  }
+  e.preventDefault();
+  DRAG.ghost.style.transform = `translate(${e.clientX - DRAG.dx}px, ${e.clientY - DRAG.dy}px) rotate(-3deg) scale(.92)`;
+  dragMark(dropAt(e.clientX, e.clientY));
+}, {passive: false});
+document.addEventListener('pointerup', async e => {
+  if (!DRAG.src || e.pointerId !== DRAG.pid) return;
+  if (!DRAG.on){ DRAG.src = null; return; }
+  const d = dropAt(e.clientX, e.clientY), u = DRAG.u;
+  DRAG.block = true; setTimeout(() => DRAG.block = false, 0);
+  dragEnd();
+  if (!d) return;
+  sel = null;
+  const c = find(u) && find(u).c; if (!c) return;
+  if (d.t === 'play'){ await act('play', u); return; }
+  const st = atkState(c);
+  if (d.t === 'leader'){
+    if (!st.l){ log(st.why || 'このフォロワーはリーダーに攻撃できない'); render(); return; }
+    if (guards().length){ log('アクト状態の守護がいるので、リーダーは攻撃できない'); render(); return; }
+    await act('atkLeader', u); return;
+  }
+  if (!st.f){ log(st.why || 'このフォロワーは攻撃できない'); render(); return; }
+  if (!attackTargets(c).some(o => o.u === d.ou)){
+    const o = findOpp(d.ou);
+    log(guards().length ? 'アクト状態の守護がいるので、守護にしか攻撃できない' : o && oppHas(o, '威圧') ? `${o.name}は【威圧】を持っているので攻撃できない` : 'スタンド状態のフォロワーには攻撃できない（アクト状態のフォロワーにだけ攻撃できる）');
+    render(); return;
+  }
+  await act('atkFollower', u, {target: d.ou});
+});
+document.addEventListener('pointercancel', () => { if (DRAG.src) dragEnd(); });
+// ドラッグのあとのタップ扱いを止める
+document.addEventListener('click', e => { if (DRAG.block){ e.stopPropagation(); e.preventDefault(); } }, true);
 
 /* ---------- events ---------- */
 const MOBILE = () => window.matchMedia('(max-width:700px)').matches;
