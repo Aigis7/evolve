@@ -470,6 +470,13 @@ header.top h1{font-size:20px}
   #setupView.mode-deck #importBox{order:3}
   #setupView.mode-deck #poolPanel{order:4}
 }
+/* デッキの中身（折りたたみ） */
+#deckListBox{border:1px solid rgba(255,255,255,.08);border-radius:10px;background:rgba(0,0,0,.15)}
+#deckListBox > summary{cursor:pointer;list-style:none;display:flex;align-items:center;justify-content:space-between;gap:8px;padding:10px 12px;font-size:13px;font-weight:700}
+#deckListBox > summary::-webkit-details-marker{display:none}
+#deckListBox > summary::after{content:"開く";font-size:11.5px;font-weight:400;color:var(--muted);padding:2px 8px;border:1px solid var(--line);border-radius:999px}
+#deckListBox[open] > summary::after{content:"たたむ"}
+#deckListBox .dlist{padding:0 12px 8px}
 /* ドラッグ */
 #gameView .card[data-u]{-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
 #field .card,#ex .card{touch-action:none}
@@ -640,7 +647,7 @@ body.drag-attack .dropover{outline-color:var(--danger) !important}
       <label class="opts deckonly">クラス <select id="deckCls"></select></label>
       <div class="dsum" id="deckSum"></div>
       <div id="validate"></div>
-      <div class="dlist deckonly" id="deckList"></div>
+      <details id="deckListBox" class="deckonly"><summary id="deckListSum">デッキの中身</summary><div class="dlist" id="deckList"></div></details>
       <div class="toolbar deckonly"><button id="btnDupDeck" type="button">複製</button><button id="btnDelDeck" type="button" class="danger">このデッキを削除</button></div>
       <details id="deckImportBox" class="deckonly">
         <summary class="fmt" style="cursor:pointer">リストからデッキを作る</summary>
@@ -993,6 +1000,9 @@ function renderSetup(){
   const rm = rows('main'), re = rows('evo');
   $('deckList').innerHTML = (rm || re) ? `${rm ? `<div class="dsec">メイン</div>${rm}` : ''}${re ? `<div class="dsec">エボルヴ</div>${re}` : ''}` : '<p class="fmt">カードプールの＋でデッキに入れる。</p>';
   renderDeckSel();
+  const dlb = $('deckListBox');
+  if (!dlb.dataset.init){ dlb.dataset.init = 1; dlb.open = LS.get('evolveSolo.deckListOpen', !window.matchMedia('(max-width:900px)').matches); dlb.addEventListener('toggle', () => LS.set('evolveSolo.deckListOpen', dlb.open)); }
+  $('deckListSum').textContent = `デッキの中身（メイン${deckCount('main')}・エボルヴ${deckCount('evo')}）`;
   netRenderSetup();
   const ov = LS.get('evolveSolo.oppDeck', '');
   $('oppDeckSel').innerHTML = '<option value="">CPUなし（相手の場は手動で置く）</option>'
